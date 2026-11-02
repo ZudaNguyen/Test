@@ -1,0 +1,46 @@
+[
+    {
+        "path":  "compose.yaml",
+        "sha256":  "7c6f7e833f9b42d8c93eb8020f146174925662f53f1a4b0ac9c7183c7d7a3303"
+    },
+    {
+        "path":  "docker\\hadoop.Dockerfile",
+        "sha256":  "c8571318c6a621c17a1ebce2c60d2121692a1511303f888ca6b5d7cbd362236d"
+    },
+    {
+        "path":  "docker\\spark.Dockerfile",
+        "sha256":  "cad8a70a4e4f9f7a4795b48a7a20b846619715766f4258f7a6e2def40a13405a"
+    },
+    {
+        "path":  "config\\hadoop\\core-site.xml",
+        "sha256":  "8a92d3fbaf5371435737b2c7fa8b6492a0f5daaffdbdffbd0ff009811290eafb"
+    },
+    {
+        "path":  "config\\hadoop\\hdfs-site.xml",
+        "sha256":  "7f13a50a2b6590df343f9ff693e150c8e0a3a7a0c03e5d79ec1d2d114eb0e5f0"
+    },
+    {
+        "path":  "config\\spark\\spark-defaults.conf",
+        "sha256":  "bbc744a6594deb38f6fc5a98f29576637dc7e49f2bb8a4271e5fe84d558910a6"
+    },
+    {
+        "path":  "scripts\\step1.ps1",
+        "sha256":  "4220dd751ba413097b89b27df587b7f1b1e7da8ee1ea81c4dc0e2e1d746f87d2"
+    },
+    {
+        "path":  "scripts\\download_data.py",
+        "sha256":  "c776e149ee14399fcf440ed3bc910d5faa3ea8e1bf42c8e92305d17f351e9bee"
+    },
+    {
+        "path":  "scripts\\hdfs-entrypoint.sh",
+        "sha256":  "929d7e2d6b4f0b341a83c3c87f261b9105d23fe5a733a22929e1f2add70a164a"
+    },
+    {
+        "path":  "scripts\\import-hdfs.sh",
+        "sha256":  "d6b60ec09f9116c78c03ebe7d9e9638078fde8dfb5b144b856933908772ce679"
+    },
+    {
+        "path":  "src\\verify_input.py",
+        "sha256":  "b2839619e4f6399b663ed2bddc178931ac7ef85fceecfdfd4996da4f28078608"
+    }
+]

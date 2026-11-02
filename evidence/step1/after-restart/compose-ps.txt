@@ -1,0 +1,5 @@
+NAME                          IMAGE                       COMMAND                  SERVICE        CREATED         STATUS                   PORTS
+bigdata-taxi-datanode-1       bigdata-taxi-hadoop:3.4.1   "/bin/bash /opt/proj…"   datanode       4 minutes ago   Up 4 minutes (healthy)   127.0.0.1:9864->9864/tcp
+bigdata-taxi-namenode-1       bigdata-taxi-hadoop:3.4.1   "/bin/bash /opt/proj…"   namenode       4 minutes ago   Up 4 minutes (healthy)   127.0.0.1:9870->9870/tcp
+bigdata-taxi-spark-master-1   bigdata-taxi-spark:3.5.8    "/opt/spark/bin/spar…"   spark-master   4 minutes ago   Up 4 minutes (healthy)   127.0.0.1:4040->4040/tcp, 127.0.0.1:8080->8080/tcp
+bigdata-taxi-spark-worker-1   bigdata-taxi-spark:3.5.8    "/opt/spark/bin/spar…"   spark-worker   4 minutes ago   Up 4 minutes (healthy)   127.0.0.1:8081->8081/tcp

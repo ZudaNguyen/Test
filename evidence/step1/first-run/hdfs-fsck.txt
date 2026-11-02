@@ -1,0 +1,58 @@
+Connecting to namenode via http://namenode:9870/fsck?ugi=root&files=1&blocks=1&path=%2Ftaxi
+FSCK started by root (auth:SIMPLE) from /172.19.0.2 for path /taxi at Fri Oct 30 16:24:46 UTC 2026
+
+/taxi <dir>
+/taxi/manifests <dir>
+/taxi/manifests/2023-01.json 1097 bytes, replicated: replication=1, 1 block(s):  OK
+0. BP-939552636-172.19.0.2-1793377070890:blk_1073741827_1003 len=1097 Live_repl=1
+
+/taxi/raw <dir>
+/taxi/raw/yellow <dir>
+/taxi/raw/yellow/year=2023 <dir>
+/taxi/raw/yellow/year=2023/month=01 <dir>
+/taxi/raw/yellow/year=2023/month=01/yellow_tripdata_2023-01.parquet 47673370 bytes, replicated: replication=1, 1 block(s):  OK
+0. BP-939552636-172.19.0.2-1793377070890:blk_1073741825_1001 len=47673370 Live_repl=1
+
+/taxi/reference <dir>
+/taxi/reference/taxi_zone_lookup.csv 12331 bytes, replicated: replication=1, 1 block(s):  OK
+0. BP-939552636-172.19.0.2-1793377070890:blk_1073741826_1002 len=12331 Live_repl=1
+
+
+Status: HEALTHY
+ Number of data-nodes:	1
+ Number of racks:		1
+ Total dirs:			7
+ Total symlinks:		0
+
+Replicated Blocks:
+ Total size:	47686798 B
+ Total files:	3
+ Total blocks (validated):	3 (avg. block size 15895599 B)
+ Minimally replicated blocks:	3 (100.0 %)
+ Over-replicated blocks:	0 (0.0 %)
+ Under-replicated blocks:	0 (0.0 %)
+ Mis-replicated blocks:		0 (0.0 %)
+ Default replication factor:	1
+ Average block replication:	1.0
+ Missing blocks:		0
+ Corrupt blocks:		0
+ Missing replicas:		0 (0.0 %)
+ Blocks queued for replication:	0
+
+Erasure Coded Block Groups:
+ Total size:	0 B
+ Total files:	0
+ Total block groups (validated):	0
+ Minimally erasure-coded block groups:	0
+ Over-erasure-coded block groups:	0
+ Under-erasure-coded block groups:	0
+ Unsatisfactory placement block groups:	0
+ Average block group size:	0.0
+ Missing block groups:		0
+ Corrupt block groups:		0
+ Missing internal blocks:	0
+ Blocks queued for replication:	0
+FSCK ended at Fri Oct 30 16:24:46 UTC 2026 in 100 milliseconds
+
+
+The filesystem under path '/taxi' is HEALTHY

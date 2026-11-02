@@ -1,0 +1,11 @@
+.tools/
+submission/
+__pycache__/
+*.pyc
+data/raw/*
+!data/raw/.gitkeep
+logs/*
+!logs/.gitkeep
+!logs/spark-events/
+logs/spark-events/*
+!logs/spark-events/.gitkeep

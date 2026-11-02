@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "source_page": "https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page",
+  "month": "2023-01",
+  "files": [
+    {
+      "name": "yellow_tripdata_2023-01.parquet",
+      "format": "parquet",
+      "source_url": "https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_2023-01.parquet",
+      "downloaded_at_utc": "2026-10-30T16:19:06.748473+00:00",
+      "size_bytes": 47673370,
+      "sha256": "32df6f67578fa86c484a6b5ef23a5281992ff085521082340b0f9e5889e9a572",
+      "etag": "\"c1744317232f0b94f424e50e381189b5-3\"",
+      "last_modified": "Mon, 20 Mar 2023 20:46:51 GMT"
+    },
+    {
+      "name": "taxi_zone_lookup.csv",
+      "format": "csv",
+      "source_url": "https://d37ci6vzurychx.cloudfront.net/misc/taxi_zone_lookup.csv",
+      "downloaded_at_utc": "2026-10-30T16:19:06.803713+00:00",
+      "size_bytes": 12331,
+      "sha256": "1a99e105092230f8620f301edcca7f80d3080642ff404d28ed957d3fa222c8ed",
+      "etag": "\"c6064b7c144c716450641f769659d178\"",
+      "last_modified": "Thu, 22 Feb 2024 21:33:00 GMT"
+    }
+  ]
+}

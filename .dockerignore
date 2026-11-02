@@ -1,0 +1,10 @@
+**
+!docker/
+!docker/**
+!config/
+!config/**
+!scripts/
+!scripts/hdfs-entrypoint.sh
+!scripts/import-hdfs.sh
+!src/
+!src/verify_input.py

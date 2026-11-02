@@ -1,0 +1,10 @@
+{
+    "status":  "passed",
+    "action":  "All",
+    "month":  "2023-01",
+    "run_id":  "20261030T162529747Z",
+    "finished_at_utc":  "2026-10-30T16:30:25.6268003Z",
+    "wall_seconds":  295.873,
+    "compose_sha256":  "7c6f7e833f9b42d8c93eb8020f146174925662f53f1a4b0ac9c7183c7d7a3303",
+    "scope":  "Infrastructure and original data only; no cleaning or analytics"
+}

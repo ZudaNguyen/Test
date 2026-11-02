@@ -1,0 +1,32 @@
+[
+  {
+    "LocationID": "1",
+    "Borough": "EWR",
+    "Zone": "Newark Airport",
+    "service_zone": "EWR"
+  },
+  {
+    "LocationID": "2",
+    "Borough": "Queens",
+    "Zone": "Jamaica Bay",
+    "service_zone": "Boro Zone"
+  },
+  {
+    "LocationID": "3",
+    "Borough": "Bronx",
+    "Zone": "Allerton/Pelham Gardens",
+    "service_zone": "Boro Zone"
+  },
+  {
+    "LocationID": "4",
+    "Borough": "Manhattan",
+    "Zone": "Alphabet City",
+    "service_zone": "Yellow Zone"
+  },
+  {
+    "LocationID": "5",
+    "Borough": "Staten Island",
+    "Zone": "Arden Heights",
+    "service_zone": "Boro Zone"
+  }
+]
