@@ -1,0 +1,676 @@
+{
+  "status": "passed",
+  "policy_version": "tlc-cleaning-v1",
+  "run_id": "p2-202301-20261103T144442887Z-0d5679",
+  "month": "2023-01",
+  "started_at_utc": "2026-11-03T14:46:26.466183+00:00",
+  "input_path": "hdfs://namenode:8020/user/tlc/raw/yellow_tripdata_2023-01.parquet",
+  "zones_path": "hdfs://namenode:8020/user/tlc/reference/taxi_zone_lookup.csv",
+  "outputs": {
+    "cleaned": "hdfs://namenode:8020/user/tlc/cleaned/year=2023/month=01/run_id=p2-202301-20261103T144442887Z-0d5679",
+    "rejected": "hdfs://namenode:8020/user/tlc/rejected/year=2023/month=01/run_id=p2-202301-20261103T144442887Z-0d5679",
+    "quality_report": "hdfs://namenode:8020/user/tlc/quality/year=2023/month=01/run_id=p2-202301-20261103T144442887Z-0d5679/quality_report.json"
+  },
+  "policy": {
+    "invalid_pickup_time": "Pickup time is missing or cannot be parsed.",
+    "invalid_dropoff_time": "Dropoff time is missing or cannot be parsed.",
+    "nonpositive_duration": "Dropoff is not later than pickup.",
+    "pickup_outside_month": "Pickup is outside the requested calendar month.",
+    "invalid_passenger_count": "Passenger count must be finite, positive, integral and fit int32.",
+    "invalid_trip_distance": "Distance must be finite and strictly positive.",
+    "invalid_fare_amount": "Fare must be finite, nonnegative and fit decimal(18,2).",
+    "invalid_total_amount": "Total must be finite, nonnegative and fit decimal(18,2).",
+    "invalid_tip_amount": "A recorded nonnull tip must be finite, nonnegative and fit decimal(18,2)."
+  },
+  "policy_notes": [
+    "Zero fare/total are allowed; distance and passenger count must be positive.",
+    "Missing tips are retained as null with a warning, never replaced by zero.",
+    "Unknown zones/payment types are warnings, not row rejection rules.",
+    "Negative recorded fare/total/tip are excluded by policy, not declared fraudulent.",
+    "Money uses decimal(18,2); optional money parse failures become null with a warning.",
+    "TimestampNTZ source wall-clock values are preserved; duration is a naive time difference.",
+    "Identical rows are retained; the source has no guaranteed unique trip key."
+  ],
+  "spark_version": "4.1.4",
+  "application_id": "app-20261103144631-0000",
+  "executor_hosts": [
+    "spark-worker"
+  ],
+  "driver_host": "spark-master",
+  "cache_storage_level": "DISK_ONLY",
+  "input_schema": {
+    "fields": [
+      {
+        "metadata": {},
+        "name": "VendorID",
+        "nullable": true,
+        "type": "long"
+      },
+      {
+        "metadata": {},
+        "name": "tpep_pickup_datetime",
+        "nullable": true,
+        "type": "timestamp_ntz"
+      },
+      {
+        "metadata": {},
+        "name": "tpep_dropoff_datetime",
+        "nullable": true,
+        "type": "timestamp_ntz"
+      },
+      {
+        "metadata": {},
+        "name": "passenger_count",
+        "nullable": true,
+        "type": "double"
+      },
+      {
+        "metadata": {},
+        "name": "trip_distance",
+        "nullable": true,
+        "type": "double"
+      },
+      {
+        "metadata": {},
+        "name": "RatecodeID",
+        "nullable": true,
+        "type": "double"
+      },
+      {
+        "metadata": {},
+        "name": "store_and_fwd_flag",
+        "nullable": true,
+        "type": "string"
+      },
+      {
+        "metadata": {},
+        "name": "PULocationID",
+        "nullable": true,
+        "type": "long"
+      },
+      {
+        "metadata": {},
+        "name": "DOLocationID",
+        "nullable": true,
+        "type": "long"
+      },
+      {
+        "metadata": {},
+        "name": "payment_type",
+        "nullable": true,
+        "type": "long"
+      },
+      {
+        "metadata": {},
+        "name": "fare_amount",
+        "nullable": true,
+        "type": "double"
+      },
+      {
+        "metadata": {},
+        "name": "extra",
+        "nullable": true,
+        "type": "double"
+      },
+      {
+        "metadata": {},
+        "name": "mta_tax",
+        "nullable": true,
+        "type": "double"
+      },
+      {
+        "metadata": {},
+        "name": "tip_amount",
+        "nullable": true,
+        "type": "double"
+      },
+      {
+        "metadata": {},
+        "name": "tolls_amount",
+        "nullable": true,
+        "type": "double"
+      },
+      {
+        "metadata": {},
+        "name": "improvement_surcharge",
+        "nullable": true,
+        "type": "double"
+      },
+      {
+        "metadata": {},
+        "name": "total_amount",
+        "nullable": true,
+        "type": "double"
+      },
+      {
+        "metadata": {},
+        "name": "congestion_surcharge",
+        "nullable": true,
+        "type": "double"
+      },
+      {
+        "metadata": {},
+        "name": "airport_fee",
+        "nullable": true,
+        "type": "double"
+      }
+    ],
+    "type": "struct"
+  },
+  "zone_lookup_rows": 265,
+  "input_files": [
+    "hdfs://namenode:8020/user/tlc/raw/yellow_tripdata_2023-01.parquet"
+  ],
+  "quality": {
+    "input_rows": 3066766,
+    "cleaned_rows": 2884463,
+    "rejected_rows": 182303,
+    "rejected_fraction": 0.05944470494325293,
+    "rejection_counts": {
+      "invalid_pickup_time": 0,
+      "invalid_dropoff_time": 0,
+      "nonpositive_duration": 1121,
+      "pickup_outside_month": 48,
+      "invalid_passenger_count": 122907,
+      "invalid_trip_distance": 45862,
+      "invalid_fare_amount": 25049,
+      "invalid_total_amount": 25204,
+      "invalid_tip_amount": 225
+    },
+    "warning_counts": {
+      "missing_tip_amount": 0,
+      "unknown_pickup_zone": 41763,
+      "unknown_dropoff_zone": 33549,
+      "unknown_payment_type": 0,
+      "invalid_extra": 0,
+      "invalid_mta_tax": 0,
+      "invalid_tolls_amount": 0,
+      "invalid_improvement_surcharge": 0,
+      "invalid_congestion_surcharge": 0,
+      "invalid_airport_fee": 0
+    },
+    "source_null_counts": {
+      "VendorID": 0,
+      "tpep_pickup_datetime": 0,
+      "tpep_dropoff_datetime": 0,
+      "passenger_count": 71743,
+      "trip_distance": 0,
+      "RatecodeID": 71743,
+      "store_and_fwd_flag": 71743,
+      "PULocationID": 0,
+      "DOLocationID": 0,
+      "payment_type": 0,
+      "fare_amount": 0,
+      "extra": 0,
+      "mta_tax": 0,
+      "tip_amount": 0,
+      "tolls_amount": 0,
+      "improvement_surcharge": 0,
+      "total_amount": 0,
+      "congestion_surcharge": 71743,
+      "airport_fee": 71743
+    },
+    "invalid_money_parse_or_range_counts": {
+      "fare_amount": 0,
+      "tip_amount": 0,
+      "total_amount": 0,
+      "extra": 0,
+      "mta_tax": 0,
+      "tolls_amount": 0,
+      "improvement_surcharge": 0,
+      "congestion_surcharge": 0,
+      "airport_fee": 0
+    },
+    "counting_note": "Reasons overlap: one rejected row may contribute to several reason counts."
+  },
+  "timings_seconds": {
+    "profile_and_materialize": 53.299,
+    "write_cleaned": 14.879,
+    "write_rejected": 4.084,
+    "read_back_and_validate": 17.812,
+    "job_until_report": 135.372
+  },
+  "cleaned_schema": {
+    "fields": [
+      {
+        "metadata": {},
+        "name": "VendorID",
+        "nullable": true,
+        "type": "long"
+      },
+      {
+        "metadata": {},
+        "name": "tpep_pickup_datetime",
+        "nullable": true,
+        "type": "timestamp_ntz"
+      },
+      {
+        "metadata": {},
+        "name": "tpep_dropoff_datetime",
+        "nullable": true,
+        "type": "timestamp_ntz"
+      },
+      {
+        "metadata": {},
+        "name": "passenger_count",
+        "nullable": true,
+        "type": "integer"
+      },
+      {
+        "metadata": {},
+        "name": "trip_distance",
+        "nullable": true,
+        "type": "double"
+      },
+      {
+        "metadata": {},
+        "name": "RatecodeID",
+        "nullable": true,
+        "type": "double"
+      },
+      {
+        "metadata": {},
+        "name": "store_and_fwd_flag",
+        "nullable": true,
+        "type": "string"
+      },
+      {
+        "metadata": {},
+        "name": "PULocationID",
+        "nullable": true,
+        "type": "integer"
+      },
+      {
+        "metadata": {},
+        "name": "DOLocationID",
+        "nullable": true,
+        "type": "integer"
+      },
+      {
+        "metadata": {},
+        "name": "payment_type",
+        "nullable": true,
+        "type": "integer"
+      },
+      {
+        "metadata": {},
+        "name": "fare_amount",
+        "nullable": true,
+        "type": "decimal(18,2)"
+      },
+      {
+        "metadata": {},
+        "name": "extra",
+        "nullable": true,
+        "type": "decimal(18,2)"
+      },
+      {
+        "metadata": {},
+        "name": "mta_tax",
+        "nullable": true,
+        "type": "decimal(18,2)"
+      },
+      {
+        "metadata": {},
+        "name": "tip_amount",
+        "nullable": true,
+        "type": "decimal(18,2)"
+      },
+      {
+        "metadata": {},
+        "name": "tolls_amount",
+        "nullable": true,
+        "type": "decimal(18,2)"
+      },
+      {
+        "metadata": {},
+        "name": "improvement_surcharge",
+        "nullable": true,
+        "type": "decimal(18,2)"
+      },
+      {
+        "metadata": {},
+        "name": "total_amount",
+        "nullable": true,
+        "type": "decimal(18,2)"
+      },
+      {
+        "metadata": {},
+        "name": "congestion_surcharge",
+        "nullable": true,
+        "type": "decimal(18,2)"
+      },
+      {
+        "metadata": {},
+        "name": "airport_fee",
+        "nullable": true,
+        "type": "decimal(18,2)"
+      },
+      {
+        "metadata": {},
+        "name": "source_file",
+        "nullable": false,
+        "type": "string"
+      },
+      {
+        "metadata": {},
+        "name": "warning_flags",
+        "nullable": false,
+        "type": {
+          "containsNull": true,
+          "elementType": "string",
+          "type": "array"
+        }
+      },
+      {
+        "metadata": {},
+        "name": "pickup_date",
+        "nullable": true,
+        "type": "date"
+      },
+      {
+        "metadata": {},
+        "name": "pickup_hour",
+        "nullable": true,
+        "type": "integer"
+      },
+      {
+        "metadata": {},
+        "name": "is_weekend",
+        "nullable": true,
+        "type": "boolean"
+      },
+      {
+        "metadata": {},
+        "name": "trip_duration_minutes",
+        "nullable": true,
+        "type": "double"
+      }
+    ],
+    "type": "struct"
+  },
+  "samples": {
+    "cleaned": [
+      {
+        "VendorID": 2,
+        "tpep_pickup_datetime": "2023-01-01T00:32:10.000",
+        "tpep_dropoff_datetime": "2023-01-01T00:40:36.000",
+        "passenger_count": 1,
+        "trip_distance": 0.97,
+        "RatecodeID": 1.0,
+        "store_and_fwd_flag": "N",
+        "PULocationID": 161,
+        "DOLocationID": 141,
+        "payment_type": 2,
+        "fare_amount": 9.3,
+        "extra": 1.0,
+        "mta_tax": 0.5,
+        "tip_amount": 0.0,
+        "tolls_amount": 0.0,
+        "improvement_surcharge": 1.0,
+        "total_amount": 14.3,
+        "congestion_surcharge": 2.5,
+        "airport_fee": 0.0,
+        "source_file": "hdfs://namenode:8020/user/tlc/raw/yellow_tripdata_2023-01.parquet",
+        "warning_flags": [],
+        "pickup_date": "2023-01-01",
+        "pickup_hour": 0,
+        "is_weekend": true,
+        "trip_duration_minutes": 8.433333333333334
+      },
+      {
+        "VendorID": 2,
+        "tpep_pickup_datetime": "2023-01-01T00:55:08.000",
+        "tpep_dropoff_datetime": "2023-01-01T01:01:27.000",
+        "passenger_count": 1,
+        "trip_distance": 1.1,
+        "RatecodeID": 1.0,
+        "store_and_fwd_flag": "N",
+        "PULocationID": 43,
+        "DOLocationID": 237,
+        "payment_type": 1,
+        "fare_amount": 7.9,
+        "extra": 1.0,
+        "mta_tax": 0.5,
+        "tip_amount": 4.0,
+        "tolls_amount": 0.0,
+        "improvement_surcharge": 1.0,
+        "total_amount": 16.9,
+        "congestion_surcharge": 2.5,
+        "airport_fee": 0.0,
+        "source_file": "hdfs://namenode:8020/user/tlc/raw/yellow_tripdata_2023-01.parquet",
+        "warning_flags": [],
+        "pickup_date": "2023-01-01",
+        "pickup_hour": 0,
+        "is_weekend": true,
+        "trip_duration_minutes": 6.316666666666666
+      },
+      {
+        "VendorID": 2,
+        "tpep_pickup_datetime": "2023-01-01T00:25:04.000",
+        "tpep_dropoff_datetime": "2023-01-01T00:37:49.000",
+        "passenger_count": 1,
+        "trip_distance": 2.51,
+        "RatecodeID": 1.0,
+        "store_and_fwd_flag": "N",
+        "PULocationID": 48,
+        "DOLocationID": 238,
+        "payment_type": 1,
+        "fare_amount": 14.9,
+        "extra": 1.0,
+        "mta_tax": 0.5,
+        "tip_amount": 15.0,
+        "tolls_amount": 0.0,
+        "improvement_surcharge": 1.0,
+        "total_amount": 34.9,
+        "congestion_surcharge": 2.5,
+        "airport_fee": 0.0,
+        "source_file": "hdfs://namenode:8020/user/tlc/raw/yellow_tripdata_2023-01.parquet",
+        "warning_flags": [],
+        "pickup_date": "2023-01-01",
+        "pickup_hour": 0,
+        "is_weekend": true,
+        "trip_duration_minutes": 12.75
+      },
+      {
+        "VendorID": 2,
+        "tpep_pickup_datetime": "2023-01-01T00:10:29.000",
+        "tpep_dropoff_datetime": "2023-01-01T00:21:19.000",
+        "passenger_count": 1,
+        "trip_distance": 1.43,
+        "RatecodeID": 1.0,
+        "store_and_fwd_flag": "N",
+        "PULocationID": 107,
+        "DOLocationID": 79,
+        "payment_type": 1,
+        "fare_amount": 11.4,
+        "extra": 1.0,
+        "mta_tax": 0.5,
+        "tip_amount": 3.28,
+        "tolls_amount": 0.0,
+        "improvement_surcharge": 1.0,
+        "total_amount": 19.68,
+        "congestion_surcharge": 2.5,
+        "airport_fee": 0.0,
+        "source_file": "hdfs://namenode:8020/user/tlc/raw/yellow_tripdata_2023-01.parquet",
+        "warning_flags": [],
+        "pickup_date": "2023-01-01",
+        "pickup_hour": 0,
+        "is_weekend": true,
+        "trip_duration_minutes": 10.833333333333334
+      },
+      {
+        "VendorID": 2,
+        "tpep_pickup_datetime": "2023-01-01T00:50:34.000",
+        "tpep_dropoff_datetime": "2023-01-01T01:02:52.000",
+        "passenger_count": 1,
+        "trip_distance": 1.84,
+        "RatecodeID": 1.0,
+        "store_and_fwd_flag": "N",
+        "PULocationID": 161,
+        "DOLocationID": 137,
+        "payment_type": 1,
+        "fare_amount": 12.8,
+        "extra": 1.0,
+        "mta_tax": 0.5,
+        "tip_amount": 10.0,
+        "tolls_amount": 0.0,
+        "improvement_surcharge": 1.0,
+        "total_amount": 27.8,
+        "congestion_surcharge": 2.5,
+        "airport_fee": 0.0,
+        "source_file": "hdfs://namenode:8020/user/tlc/raw/yellow_tripdata_2023-01.parquet",
+        "warning_flags": [],
+        "pickup_date": "2023-01-01",
+        "pickup_hour": 0,
+        "is_weekend": true,
+        "trip_duration_minutes": 12.3
+      }
+    ],
+    "rejected": [
+      {
+        "VendorID": 1,
+        "tpep_pickup_datetime": "2023-01-01T00:03:48.000",
+        "tpep_dropoff_datetime": "2023-01-01T00:13:25.000",
+        "passenger_count": 0.0,
+        "trip_distance": 1.9,
+        "RatecodeID": 1.0,
+        "store_and_fwd_flag": "N",
+        "PULocationID": 138,
+        "DOLocationID": 7,
+        "payment_type": 1,
+        "fare_amount": 12.1,
+        "extra": 7.25,
+        "mta_tax": 0.5,
+        "tip_amount": 0.0,
+        "tolls_amount": 0.0,
+        "improvement_surcharge": 1.0,
+        "total_amount": 20.85,
+        "congestion_surcharge": 0.0,
+        "airport_fee": 1.25,
+        "source_file": "hdfs://namenode:8020/user/tlc/raw/yellow_tripdata_2023-01.parquet",
+        "rejection_reasons": [
+          "invalid_passenger_count"
+        ],
+        "warning_flags": []
+      },
+      {
+        "VendorID": 2,
+        "tpep_pickup_datetime": "2022-12-31T23:51:30.000",
+        "tpep_dropoff_datetime": "2022-12-31T23:56:06.000",
+        "passenger_count": 1.0,
+        "trip_distance": 0.86,
+        "RatecodeID": 1.0,
+        "store_and_fwd_flag": "N",
+        "PULocationID": 141,
+        "DOLocationID": 140,
+        "payment_type": 1,
+        "fare_amount": 6.5,
+        "extra": 1.0,
+        "mta_tax": 0.5,
+        "tip_amount": 2.0,
+        "tolls_amount": 0.0,
+        "improvement_surcharge": 1.0,
+        "total_amount": 13.5,
+        "congestion_surcharge": 2.5,
+        "airport_fee": 0.0,
+        "source_file": "hdfs://namenode:8020/user/tlc/raw/yellow_tripdata_2023-01.parquet",
+        "rejection_reasons": [
+          "pickup_outside_month"
+        ],
+        "warning_flags": []
+      },
+      {
+        "VendorID": 2,
+        "tpep_pickup_datetime": "2023-01-01T00:28:29.000",
+        "tpep_dropoff_datetime": "2023-01-01T00:31:03.000",
+        "passenger_count": 1.0,
+        "trip_distance": 0.42,
+        "RatecodeID": 1.0,
+        "store_and_fwd_flag": "N",
+        "PULocationID": 233,
+        "DOLocationID": 229,
+        "payment_type": 4,
+        "fare_amount": -5.1,
+        "extra": -1.0,
+        "mta_tax": -0.5,
+        "tip_amount": 0.0,
+        "tolls_amount": 0.0,
+        "improvement_surcharge": -1.0,
+        "total_amount": -10.1,
+        "congestion_surcharge": -2.5,
+        "airport_fee": 0.0,
+        "source_file": "hdfs://namenode:8020/user/tlc/raw/yellow_tripdata_2023-01.parquet",
+        "rejection_reasons": [
+          "invalid_fare_amount",
+          "invalid_total_amount"
+        ],
+        "warning_flags": []
+      },
+      {
+        "VendorID": 2,
+        "tpep_pickup_datetime": "2023-01-01T00:20:18.000",
+        "tpep_dropoff_datetime": "2023-01-01T00:27:56.000",
+        "passenger_count": 2.0,
+        "trip_distance": 1.19,
+        "RatecodeID": 1.0,
+        "store_and_fwd_flag": "N",
+        "PULocationID": 142,
+        "DOLocationID": 50,
+        "payment_type": 4,
+        "fare_amount": -9.3,
+        "extra": -1.0,
+        "mta_tax": -0.5,
+        "tip_amount": 0.0,
+        "tolls_amount": 0.0,
+        "improvement_surcharge": -1.0,
+        "total_amount": -14.3,
+        "congestion_surcharge": -2.5,
+        "airport_fee": 0.0,
+        "source_file": "hdfs://namenode:8020/user/tlc/raw/yellow_tripdata_2023-01.parquet",
+        "rejection_reasons": [
+          "invalid_fare_amount",
+          "invalid_total_amount"
+        ],
+        "warning_flags": []
+      },
+      {
+        "VendorID": 2,
+        "tpep_pickup_datetime": "2023-01-01T00:39:02.000",
+        "tpep_dropoff_datetime": "2023-01-01T00:46:03.000",
+        "passenger_count": 1.0,
+        "trip_distance": 0.0,
+        "RatecodeID": 1.0,
+        "store_and_fwd_flag": "N",
+        "PULocationID": 137,
+        "DOLocationID": 162,
+        "payment_type": 1,
+        "fare_amount": 7.9,
+        "extra": 1.0,
+        "mta_tax": 0.5,
+        "tip_amount": 3.22,
+        "tolls_amount": 0.0,
+        "improvement_surcharge": 1.0,
+        "total_amount": 16.12,
+        "congestion_surcharge": 2.5,
+        "airport_fee": 0.0,
+        "source_file": "hdfs://namenode:8020/user/tlc/raw/yellow_tripdata_2023-01.parquet",
+        "rejection_reasons": [
+          "invalid_trip_distance"
+        ],
+        "warning_flags": []
+      }
+    ]
+  },
+  "validation": {
+    "input_equals_cleaned_plus_rejected": true,
+    "written_row_counts_match": true,
+    "cleaned_rows_pass_rules": true,
+    "rejected_rows_have_reasons": true,
+    "written_schema_matches": true,
+    "cleaned_rows_read_back": 2884463,
+    "rejected_rows_read_back": 182303
+  },
+  "input_rows_per_second": 22654.36,
+  "finished_at_utc": "2026-11-03T14:48:41.838407+00:00"
+}

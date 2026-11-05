@@ -1,0 +1,36 @@
+{
+    "sources":  [
+                    {
+                        "path":  "src\\clean_data.py",
+                        "sha256":  "3f602c70db2384d182ad5c95b0b8bb6aedee7305fe2a3589c9bd7119a8f28ea2"
+                    },
+                    {
+                        "path":  "src\\test_cleaning_rules.py",
+                        "sha256":  "4747d2f7d784b6c1390ccdda81a69f6b18571ef0205bf7c8c5b2c03e365109b6"
+                    },
+                    {
+                        "path":  "scripts\\run_phase2.ps1",
+                        "sha256":  "bbb69f2e3daefe9750b1bfb9d3112dbe64c6369008462008d410ac5b715d3ae1"
+                    },
+                    {
+                        "path":  "docker-compose.yml",
+                        "sha256":  "82d08e3558bcfe23199d9019ee9d9468dd30b772e791d9e13f7371a280b19eb7"
+                    },
+                    {
+                        "path":  "compose.windows.yml",
+                        "sha256":  "d5b3de11ef59f8233790a1536d58efe09919d9855f2e044e24d2ecec84c3525b"
+                    }
+                ],
+    "inputs":  [
+                   {
+                       "path":  "data\\raw\\yellow_tripdata_2023-01.parquet",
+                       "bytes":  47673370,
+                       "sha256":  "32df6f67578fa86c484a6b5ef23a5281992ff085521082340b0f9e5889e9a572"
+                   },
+                   {
+                       "path":  "data\\raw\\taxi_zone_lookup.csv",
+                       "bytes":  12331,
+                       "sha256":  "1a99e105092230f8620f301edcca7f80d3080642ff404d28ed957d3fa222c8ed"
+                   }
+               ]
+}

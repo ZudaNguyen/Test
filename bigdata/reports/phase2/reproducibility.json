@@ -1,0 +1,33 @@
+{
+    "status":  "passed",
+    "checked_at_utc":  "2026-11-03T14:36:02.7988054Z",
+    "first_run":  "p2-202301-20261103T142137649Z-f107a7",
+    "second_run":  "p2-202301-20261103T143016815Z-e71064",
+    "checks":  {
+                   "quality":  true,
+                   "policy_version":  true,
+                   "input_schema":  true,
+                   "cleaned_schema":  true,
+                   "input_files":  true,
+                   "zone_lookup_rows":  true,
+                   "validation":  true,
+                   "both_reports_passed":  true,
+                   "both_runners_passed":  true,
+                   "recorded_source_and_local_input_hashes_match_current_files":  true
+               },
+    "raw_hdfs_sha256":  "32df6f67578fa86c484a6b5ef23a5281992ff085521082340b0f9e5889e9a572",
+    "raw_hdfs_hash_check":  "Observed docker exec namenode bash -c: set -o pipefail; hdfs dfs -cat /user/tlc/raw/yellow_tripdata_2023-01.parquet | sha256sum; exit 0. Matches Phase 1 and local input.",
+    "alive_workers":  1,
+    "live_datanodes":  1,
+    "completed_applications":  [
+                                   {
+                                       "id":  "app-20261103142320-0001",
+                                       "state":  "FINISHED"
+                                   },
+                                   {
+                                       "id":  "app-20261103143058-0002",
+                                       "state":  "FINISHED"
+                                   }
+                               ],
+    "note":  "Equality checks cover counts, schemas, input file paths, policy version and validation. They do not assert byte-identical Parquet or stable output row order."
+}

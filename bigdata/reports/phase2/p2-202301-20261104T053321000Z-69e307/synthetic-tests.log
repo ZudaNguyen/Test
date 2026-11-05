@@ -1,0 +1,57 @@
+WARNING: Using incubator modules: jdk.incubator.vector
+Using Spark's default log4j profile: org/apache/spark/log4j2-defaults.properties
+26/11/04 05:33:27 INFO SparkContext: Running Spark version 4.1.4
+26/11/04 05:33:27 INFO SparkContext: OS info Linux, 7.0.14-linuxkit, amd64
+26/11/04 05:33:27 INFO SparkContext: Java version 17.0.20.1+1
+26/11/04 05:33:28 WARN NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+26/11/04 05:33:28 INFO ResourceUtils: ==============================================================
+26/11/04 05:33:28 INFO ResourceUtils: No custom resources configured for spark.driver.
+26/11/04 05:33:28 INFO ResourceUtils: ==============================================================
+26/11/04 05:33:28 INFO SparkContext: Submitted application: Phase2-Synthetic-Policy-Test
+26/11/04 05:33:28 INFO SecurityManager: Changing view acls to: spark
+26/11/04 05:33:28 INFO SecurityManager: Changing modify acls to: spark
+26/11/04 05:33:28 INFO SecurityManager: Changing view acls groups to: spark
+26/11/04 05:33:28 INFO SecurityManager: Changing modify acls groups to: spark
+26/11/04 05:33:28 INFO SecurityManager: SecurityManager: authentication disabled; ui acls disabled; users with view permissions: spark groups with view permissions: EMPTY; users with modify permissions: spark; groups with modify permissions: EMPTY; RPC SSL disabled
+26/11/04 05:33:29 INFO Utils: Successfully started service 'sparkDriver' on port 44893.
+26/11/04 05:33:29 INFO SparkEnv: Registering MapOutputTracker
+26/11/04 05:33:29 INFO SparkEnv: Registering BlockManagerMaster
+26/11/04 05:33:29 INFO BlockManagerMasterEndpoint: Using org.apache.spark.storage.DefaultTopologyMapper for getting topology information
+26/11/04 05:33:29 INFO BlockManagerMasterEndpoint: BlockManagerMasterEndpoint up
+26/11/04 05:33:29 INFO SparkEnv: Registering BlockManagerMasterHeartbeat
+26/11/04 05:33:29 INFO DiskBlockManager: Created local directory at /tmp/blockmgr-99ee77aa-b204-4e30-bad7-7aa22c61de78
+26/11/04 05:33:29 INFO SparkEnv: Registering OutputCommitCoordinator
+26/11/04 05:33:29 INFO JettyUtils: Start Jetty 0.0.0.0:4040 for SparkUI
+26/11/04 05:33:29 INFO Utils: Successfully started service 'SparkUI' on port 4040.
+26/11/04 05:33:29 INFO ResourceProfile: Default ResourceProfile created, executor resources: Map(cores -> name: cores, amount: 1, script: , vendor: , memory -> name: memory, amount: 1024, script: , vendor: , offHeap -> name: offHeap, amount: 0, script: , vendor: ), task resources: Map(cpus -> name: cpus, amount: 1.0)
+26/11/04 05:33:29 INFO ResourceProfile: Limiting resource is cpu
+26/11/04 05:33:29 INFO ResourceProfileManager: Added ResourceProfile id: 0
+26/11/04 05:33:29 INFO SecurityManager: Changing view acls to: spark
+26/11/04 05:33:29 INFO SecurityManager: Changing modify acls to: spark
+26/11/04 05:33:29 INFO SecurityManager: Changing view acls groups to: spark
+26/11/04 05:33:29 INFO SecurityManager: Changing modify acls groups to: spark
+26/11/04 05:33:29 INFO SecurityManager: SecurityManager: authentication disabled; ui acls disabled; users with view permissions: spark groups with view permissions: EMPTY; users with modify permissions: spark; groups with modify permissions: EMPTY; RPC SSL disabled
+26/11/04 05:33:30 INFO Executor: Starting executor ID driver on host spark-master
+26/11/04 05:33:30 INFO Executor: OS info Linux, 7.0.14-linuxkit, amd64
+26/11/04 05:33:30 INFO Executor: Java version 17.0.20.1+1
+26/11/04 05:33:30 INFO Executor: Starting executor with user classpath (userClassPathFirst = false): ''
+26/11/04 05:33:30 INFO Executor: Created or updated repl class loader org.apache.spark.util.MutableURLClassLoader@61d56970 for default.
+26/11/04 05:33:30 INFO Utils: Successfully started service 'org.apache.spark.network.netty.NettyBlockTransferService' on port 37361.
+26/11/04 05:33:30 INFO NettyBlockTransferService: Server created on spark-master:37361
+26/11/04 05:33:30 INFO BlockManager: Using org.apache.spark.storage.RandomBlockReplicationPolicy for block replication policy
+26/11/04 05:33:30 INFO BlockManagerMaster: Registering BlockManager BlockManagerId(driver, spark-master, 37361, None)
+26/11/04 05:33:30 INFO BlockManagerMasterEndpoint: Registering block manager spark-master:37361 with 117.0 MiB RAM, BlockManagerId(driver, spark-master, 37361, None)
+26/11/04 05:33:30 INFO BlockManagerMaster: Registered BlockManager BlockManagerId(driver, spark-master, 37361, None)
+26/11/04 05:33:30 INFO BlockManager: Initialized BlockManager: BlockManagerId(driver, spark-master, 37361, None)
+test_conservation_and_expected_cases (__main__.CleaningRulesTest) ... ok
+test_missing_columns_and_empty_projection (__main__.CleaningRulesTest) ... ok
+test_nonfinite_invalid_and_overlapping_reasons (__main__.CleaningRulesTest) ... ok
+test_nullable_tip_and_warning_only_fields (__main__.CleaningRulesTest) ... ok
+test_sequential_before_after_counts (__main__.CleaningRulesTest) ... ok
+test_types_rounding_dates_and_duration (__main__.CleaningRulesTest) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 34.961s
+
+OK
+SYNTHETIC FIXTURE: 25 rows; expected clean=7 rejected=18; TLC input not modified.

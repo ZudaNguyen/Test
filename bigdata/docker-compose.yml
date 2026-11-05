@@ -1,0 +1,180 @@
+
+services:
+
+  # =========================
+  # HADOOP NAMENODE
+  # =========================
+  namenode:
+    image: apache/hadoop:3.5.0
+    container_name: namenode
+    hostname: namenode
+    restart: unless-stopped
+
+    user: "0:0"
+
+    ports:
+      - "8020:8020"
+      - "9870:9870"
+
+    environment:
+      - HADOOP_HOME=/opt/hadoop
+      - HADOOP_CONF_DIR=/opt/hadoop/etc/hadoop
+      - HDFS_NAMENODE_USER=root
+
+    volumes:
+      - hadoop_namenode:/data/dfs/name
+      - ./data:/local-data:ro
+      - ./config/core-site.xml:/opt/hadoop/etc/hadoop/core-site.xml:ro
+      - ./config/hdfs-site.xml:/opt/hadoop/etc/hadoop/hdfs-site.xml:ro
+      - ./scripts:/scripts:ro
+
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - 'if [ ! -f /data/dfs/name/current/VERSION ]; then hdfs namenode -format -nonInteractive; fi; exec hdfs namenode'
+
+    mem_limit: 1g
+    cpus: 0.25
+
+    networks:
+      - taxi-network
+
+
+  # =========================
+  # HADOOP DATANODE
+  # =========================
+  datanode:
+    image: apache/hadoop:3.5.0
+    container_name: datanode
+    hostname: datanode
+
+    entrypoint: ["/bin/bash", "-c"]
+    command: ["exec hdfs datanode"]
+
+    environment:
+      HADOOP_CONF_DIR: /opt/hadoop/etc/hadoop
+      HADOOP_HOME: /opt/hadoop
+      HDFS_DATANODE_USER: root
+
+    user: "0:0"
+
+    depends_on:
+      namenode:
+        condition: service_started
+
+    volumes:
+      - hadoop_datanode:/data/dfs/data
+      - ./config/core-site.xml:/opt/hadoop/etc/hadoop/core-site.xml:ro
+      - ./config/hdfs-site.xml:/opt/hadoop/etc/hadoop/hdfs-site.xml:ro
+
+    ports:
+      - "9864:9864"
+
+    mem_limit: 1g
+    cpus: 0.25
+    restart: unless-stopped
+    networks:
+      - taxi-network
+
+
+  # =========================
+  # SPARK MASTER
+  # =========================
+  spark-master:
+    image: apache/spark:4.1.4-scala2.13-java17-python3-ubuntu
+    container_name: spark-master
+    hostname: spark-master
+    restart: unless-stopped
+
+    ports:
+      - "8080:8080"
+      - "7077:7077"
+      - "4040:4040"
+
+    environment:
+      - SPARK_MODE=master
+      - SPARK_MASTER_HOST=spark-master
+      - SPARK_LOCAL_HOSTNAME=spark-master
+      - HADOOP_CONF_DIR=/opt/hadoop-conf
+      - PYSPARK_PYTHON=python3
+
+    volumes:
+      - ./config:/opt/hadoop-conf:ro
+      - ./src:/opt/spark/work-dir
+      - ./data:/data:ro
+
+    command:
+      - /opt/spark/bin/spark-class
+      - org.apache.spark.deploy.master.Master
+      - --host
+      - spark-master
+      - --port
+      - "7077"
+      - --webui-port
+      - "8080"
+
+    mem_limit: 2g
+    cpus: 0.5
+
+    networks:
+      - taxi-network
+
+
+  # =========================
+  # SPARK WORKER
+  # =========================
+  spark-worker:
+    image: apache/spark:4.1.4-scala2.13-java17-python3-ubuntu
+    container_name: spark-worker
+    hostname: spark-worker
+    restart: unless-stopped
+
+    ports:
+      - "8081:8081"
+
+    environment:
+      - SPARK_LOCAL_HOSTNAME=spark-worker
+      - HADOOP_CONF_DIR=/opt/hadoop-conf
+      - PYSPARK_PYTHON=python3
+
+    volumes:
+      - ./config:/opt/hadoop-conf:ro
+
+    command:
+      - /opt/spark/bin/spark-class
+      - org.apache.spark.deploy.worker.Worker
+      - --host
+      - spark-worker
+      - --port
+      - "7078"
+      - --webui-port
+      - "8081"
+      - --cores
+      - "3"
+      - --memory
+      - 3g
+      - spark://spark-master:7077
+
+    depends_on:
+      - spark-master
+
+    mem_limit: 4g
+    cpus: 3
+
+    networks:
+      - taxi-network
+
+
+# =========================
+# PERSISTENT STORAGE
+# =========================
+volumes:
+  hadoop_namenode:
+  hadoop_datanode:
+
+
+# =========================
+# NETWORK
+# =========================
+networks:
+  taxi-network:
+    driver: bridge

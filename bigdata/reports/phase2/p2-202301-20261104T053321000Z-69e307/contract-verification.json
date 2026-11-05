@@ -1,0 +1,24 @@
+{
+    "status":  "passed",
+    "run_id":  "p2-202301-20261104T053321000Z-69e307",
+    "checked_at_utc":  "2026-11-04T05:36:45.2719864Z",
+    "baseline_run_id":  "p2-202301-20261103T143016815Z-e71064",
+    "checks":  {
+                   "report_passed":  true,
+                   "duration_column_renamed":  true,
+                   "required_derived_columns_present":  true,
+                   "original_columns_retained":  true,
+                   "unchanged_input_rows":  true,
+                   "unchanged_cleaned_rows":  true,
+                   "unchanged_rejected_rows":  true,
+                   "unchanged_rejection_counts":  true,
+                   "unchanged_warning_counts":  true,
+                   "unchanged_source_null_counts":  true,
+                   "sequential_counts_reconcile":  true,
+                   "csv_matches_json":  true,
+                   "source_and_input_hashes_match":  true,
+                   "persisted_output_validation_passed":  true,
+                   "spark_application_finished":  true
+               },
+    "note":  "Schema intentionally renames duration; cleaning eligibility rules and counts remain unchanged. Historical reproducibility.json refers only to its original runs."
+}

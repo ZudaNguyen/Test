@@ -1,0 +1,13 @@
+# Windows fallback when Docker Desktop refuses host-directory sharing.
+# Configuration, source and input files are copied before containers start.
+services:
+  namenode:
+    volumes: !override
+      - hadoop_namenode:/data/dfs/name
+  datanode:
+    volumes: !override
+      - hadoop_datanode:/data/dfs/data
+  spark-master:
+    volumes: !override []
+  spark-worker:
+    volumes: !override []
