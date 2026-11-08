@@ -1,0 +1,52 @@
+{
+    "sources":  [
+                    {
+                        "path":  "src\\clean_data.py",
+                        "sha256":  "68d8f8fc4385fc329e50d937db25a7315c3782cde19cb78775aa03907c20817e"
+                    },
+                    {
+                        "path":  "src\\cleaning_policy_v2.py",
+                        "sha256":  "009b67537ccbe96faeee187d6636d2f88a0340df4c6c44060e417d64166a0eff"
+                    },
+                    {
+                        "path":  "src\\test_cleaning_rules.py",
+                        "sha256":  "9e51a6fc73c72c532c7608af899efdcbcd2f57be1ba8b7734d97fae3f0423f27"
+                    },
+                    {
+                        "path":  "src\\test_cleaning_v2.py",
+                        "sha256":  "9df2ca101f3f74c29b254f9879f22fff0dfc1135163edb5b18829b56e712a2c5"
+                    },
+                    {
+                        "path":  "scripts\\run_phase2.ps1",
+                        "sha256":  "229cb06a557fe67d4a2dce3a4dd8af9917e9459005b3196c2e080cc06bb12e62"
+                    },
+                    {
+                        "path":  "docker-compose.yml",
+                        "sha256":  "82d08e3558bcfe23199d9019ee9d9468dd30b772e791d9e13f7371a280b19eb7"
+                    },
+                    {
+                        "path":  "compose.windows.yml",
+                        "sha256":  "d5b3de11ef59f8233790a1536d58efe09919d9855f2e044e24d2ecec84c3525b"
+                    },
+                    {
+                        "path":  "config\\core-site.xml",
+                        "sha256":  "d63b573960cf01d47e553512f772594a7202d1534baf5de7c4992a6858831226"
+                    },
+                    {
+                        "path":  "config\\hdfs-site.xml",
+                        "sha256":  "2f2807bcccd342fdfa1bd206b5bb2257d0daf990e545666d5bef264340d9f1ea"
+                    }
+                ],
+    "inputs":  [
+                   {
+                       "path":  "data\\raw\\yellow_tripdata_2023-01.parquet",
+                       "bytes":  47673370,
+                       "sha256":  "32df6f67578fa86c484a6b5ef23a5281992ff085521082340b0f9e5889e9a572"
+                   },
+                   {
+                       "path":  "data\\raw\\taxi_zone_lookup.csv",
+                       "bytes":  12331,
+                       "sha256":  "1a99e105092230f8620f301edcca7f80d3080642ff404d28ed957d3fa222c8ed"
+                   }
+               ]
+}

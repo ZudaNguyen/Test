@@ -1,0 +1,8 @@
+{
+    "status":  "passed",
+    "run_id":  "p2v2-202301-20261108T122833705Z-9fc6e4",
+    "month":  "2023-01",
+    "message":  "Cleaning, persisted output checks and report export passed.",
+    "local_cleaned_directory":  "C:\\Users\\PC\\bigdata\\data\\cleaned\\year=2023\\month=01\\run_id=p2v2-202301-20261108T122833705Z-9fc6e4",
+    "finished_at_utc":  "2026-11-08T12:34:43.2462816Z"
+}

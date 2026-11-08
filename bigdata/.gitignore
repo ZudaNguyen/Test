@@ -4,4 +4,6 @@ __pycache__/
 *.pyc
 data/raw/*
 !data/raw/.gitkeep
+data/cleaned/*
+!data/cleaned/.gitkeep
 logs/*

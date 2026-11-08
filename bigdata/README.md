@@ -115,53 +115,67 @@ References: [Compose overrides](https://docs.docker.com/reference/compose-file/m
 
 Verified on 03/11/2026: Spark 4.1.4 read the HDFS Parquet file, printed 19 columns and 5 sample rows, and counted 3,066,766 rows. The same test passed after recreating containers with the Windows helper. See [runtime results](RUNTIME_RESULT.md).
 
-## 10. Phase 2 — Cleaning
+## 10. Phase 2 - TLC guide v2
 
-With the cluster running and the original Parquet uploaded, run from the project directory:
+With the Phase 1 cluster running and January 2023 Parquet already on HDFS:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\run_phase2.ps1
 ```
 
-The runner copies the current Python source to Spark, checks 25 synthetic cases, uploads the zone lookup, runs the real distributed cleaning job, and exports the report. It does not recreate containers or overwrite original data. If the cluster is stopped, start it first using section 3.
+The runner copies source into Spark, executes 8 tests on 47 hand-counted synthetic rows, uploads the zone CSV, runs cleaning on the standalone worker, exports the quality report and copies clean Parquet to Windows. It preserves original data and creates a separate output per run.
 
-Outputs:
+### Hard filters
 
-- Clean Parquet: `/user/tlc/cleaned/year=2023/month=01/run_id=<run_id>/`.
-- Rejected Parquet with original values and `rejection_reasons`: `/user/tlc/rejected/year=2023/month=01/run_id=<run_id>/`.
-- HDFS JSON report: `/user/tlc/quality/year=2023/month=01/run_id=<run_id>/quality_report.json`.
-- Local report and logs: `reports/phase2/<run_id>/`.
-- Before/after counts per rule: `reports/phase2/<run_id>/rule-counts.csv` (also printed in the terminal).
-- Latest successful report: `reports/phase2/latest.json`.
+- Parseable pickup/dropoff; dropoff later than pickup; duration at most 360 minutes.
+- Pickup year 2023. The month parameter identifies the input-file batch (default January), not an additional pickup-month filter. Eligible pickups in other months of 2023 remain, and dropoff may cross a month boundary.
+- Finite distance in `(0,100]` miles and speed at most 80 mph. Speed uses `try_divide` to remain safe on zero duration.
+- Finite fare strictly greater than zero, also positive after cent rounding.
+- Both pickup and dropoff LocationID must normalize to nonnull integers. Nonnull unknown IDs, including 264/265, are warnings.
 
-Each run has its own output directories. Phase 3 should read **one exact cleaned path from the successful report**, rather than scanning all run versions together.
+### Soft transformations
 
-### Cleaning policy
+Passenger count equal to 0 or greater than 6 becomes null, with the row retained if its hard filters pass. Existing null remains null. Negative, fractional, nonfinite and unparseable passenger values also become null defensively; valid integers 1-6 remain. Never fill passenger count with 1 or replace missing tip with zero.
 
-The job rejects missing/unparseable pickup or dropoff time, nonpositive duration, pickup outside the requested month, invalid passenger count, nonpositive/nonfinite distance, and missing/invalid/negative fare or total. Passenger count must be a positive integer fitting int32. A nonnull recorded tip must also be finite, nonnegative and representable as money.
+`RatecodeID` becomes integer; 99 is retained for KPI-specific decisions in Phase 3. Invalid RatecodeID becomes null with a flag. Total/tip sign is not a row filter in guide v2: negative recorded values remain with warnings. Invalid optional money becomes null with flags. Money is normalized to `decimal(18,2)`; this rounds to cents. Timestamps preserve source `timestamp_ntz` wall-clock values. Identical rows remain because there is no guaranteed unique trip key.
 
-A missing tip remains null and is flagged; it is never filled with zero. Unknown zones/payment types are warnings and do not remove an otherwise eligible trip. Zones 264 and 265 are also marked unknown for spatial interpretation. Optional money values that cannot be normalized become null with an explicit warning. Optional surcharges are not forced to be nonnegative.
+Added features: `trip_duration_min`, `pickup_date`, `pickup_hour`, `pickup_month`, `is_weekend`. Original column names remain, alongside `source_file`, `warning_flags` and `transformation_flags`.
 
-These are eligibility rules for the analysis scope. Negative financial records may represent adjustments; exclusion does not prove the record is false. Identical rows are retained because a guaranteed unique trip key is unavailable.
+These are analysis eligibility rules, not proof that excluded records are fraudulent or physically impossible. Defensive casts and cent rounding are documented extensions of the guide's conditions. Output `year/month` folders identify the source-file batch; `pickup_month` stores the actual event month used for KPI grouping.
 
-Money columns use `decimal(18,2)`; the conversion rounds to cents using Spark's decimal cast. Source timestamps stay `timestamp_ntz`. Added fields are `trip_duration_min`, `pickup_date`, `pickup_hour` and `is_weekend`. Duration follows source wall-clock time; no UTC conversion is applied to the original timestamps.
+### Outputs and evidence
 
-### Verification
+- HDFS clean: `/user/tlc/cleaned/year=2023/month=01/run_id=<run_id>/`.
+- HDFS rejected original values plus all rejection/repair reasons: `/user/tlc/rejected/year=2023/month=01/run_id=<run_id>/`.
+- HDFS quality JSON: `/user/tlc/quality/year=2023/month=01/run_id=<run_id>/quality_report.json`.
+- Local clean copy: `data/cleaned/year=2023/month=01/run_id=<run_id>/`.
+- Report, logs and CSV: `reports/phase2/<run_id>/`.
+- Latest successful report: `reports/phase2/latest.json`; latest local export: `reports/phase2/latest-export.json`.
+- `rule-counts.csv`: sequential input / removed / output counts; a rejected row is counted at its first failed rule only.
+- `transformation-counts.csv`: soft repairs counted separately across input, retained and rejected rows. These counts can overlap and are not row removals.
+- `cleaned-explain.txt`: Spark's actual physical plan, including supported Parquet `PushedFilters`.
+- `local-output-manifest.json`: file sizes and SHA-256 of the exported Parquet copy, with `_SUCCESS` and header/footer checks.
 
-The job asserts `input_rows = cleaned_rows + rejected_rows`, reads back both Parquet outputs, checks their counts/schema, and re-applies the rules to written clean rows. Every rejected row must carry a reason. Error/warning counts in the input profile may overlap; their sum is not the rejected-row count.
+Phase 3 must read one exact successful `outputs.cleaned` path, or its corresponding local export. Scanning multiple historical run IDs would double-count trips. Historical `tlc-cleaning-v1` reports and old ZIPs do not describe guide-v2 results.
 
-Report version 2 adds `quality.sequential_rule_counts`: ordered steps with `input_rows`, `removed_rows` and `output_rows`. Rules run in the reported `rule_order` (timestamps, month, passengers, distance, money). A row contributes to removals at its first failed rule only; all its reasons remain in rejected Parquet. Each step's output equals the next step's input, all removals sum to `rejected_rows`, and the final output equals `cleaned_rows`. These counts are computed in the same distributed aggregate used for profiling. `rejection_counts` still records every violation across the original input, so it may overlap.
+### Verification and optimization
 
-Only tiny lookup metadata, aggregate statistics and five sample rows are collected to the driver. The complete dataset stays distributed; caching uses disk to reduce RAM pressure. Timings include profiling, writing and output verification, and are not a Spark-versus-Pandas benchmark.
+The job reconciles input = clean + rejected, validates sequential counts, reads persisted Parquet back, checks count/schema/derived fields and re-applies the hard rules. It checks the expected retained passenger-null count, demonstrating that soft repairs do not remove the row.
 
-For a repeat run with unchanged code after the synthetic tests have passed:
+The cleaned branch applies one combined filter directly to raw Parquet, before repairs or cache. A separate audit branch scans every input row for complete before/after counts. Only supported predicates push into the Parquet reader; HDFS does not execute SQL row filters. Both branches may scan input, and cache uses `DISK_ONLY`. Aggregate statistics, the small zone lookup and at most 5 rows per sample category are collected; full TLC data stays distributed. There is no Python UDF in cleaning.
+
+Job timings include profiling, output writing and readback checks; they exclude fixture tests, CSV upload and local export. These are not Spark-versus-Pandas benchmark results.
+
+Repeat unchanged code without the synthetic suite:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\run_phase2.ps1 -SkipTests
 ```
 
-Main files: `src/clean_data.py` (rules and job), `src/test_cleaning_rules.py` (hand-checked synthetic cases), `scripts/run_phase2.ps1` (execution and report export).
+Main files: `src/cleaning_policy_v2.py` (policy, projection, counters), `src/clean_data.py` (job, persistence and validation), `src/test_cleaning_v2.py` (47 fixture rows), `src/test_cleaning_rules.py` (test entry point), `scripts/run_phase2.ps1` (run/export).
 
-Updated and verified on 04/11/2026: 3,066,766 input rows = 2,884,463 clean rows + 182,303 rejected rows (5.94%). The latest successful output uses `trip_duration_min`; report version 2 includes sequential before/after counts and a CSV. Counts remain unchanged from the original runs. See [Phase 2 results and explanation (Vietnamese)](PHASE2_RESULT.md), [latest report](reports/phase2/latest.json) and [updated contract checks](reports/phase2/p2-202301-20261104T053321000Z-69e307/contract-verification.json). [Original reproducibility checks dated 03/11](reports/phase2/reproducibility.json) describe the historical runs and their source hashes.
+See [Phase 2 results (Vietnamese)](PHASE2_RESULT.md) for the verified run, counts and handoff paths.
 
-AI disclosure: Codex substantially assisted with Phase 2 implementation, tests, execution checks and documentation. The team must review and understand the submitted work and acknowledge this assistance in its coursework report.
+AI disclosure: Codex substantially assisted with implementation, tests, execution checks and documentation. The team must review and understand the submitted work and acknowledge this assistance in its coursework report.
+
+Verified guide v2 on 08/11/2026: 3,066,766 input = 2,993,943 clean + 72,823 rejected (2.37%). The retained dataset includes 49,797 repaired passenger counts and 113,936 null passenger counts in total. Both HDFS readback and the local Parquet export passed; see PHASE2_RESULT.md and reports/phase2/latest.json.

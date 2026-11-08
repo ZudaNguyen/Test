@@ -1,6 +1,8 @@
 """Phase 2: auditable batch cleaning of original TLC Parquet with Spark SQL."""
 
 import argparse
+from contextlib import redirect_stdout
+import io
 import json
 import math
 import re
@@ -14,163 +16,9 @@ from pyspark import StorageLevel
 from pyspark.sql import SparkSession, functions as F
 
 
-POLICY_VERSION = "tlc-cleaning-v1"
-REPORT_VERSION = 2
-PICKUP = "tpep_pickup_datetime"
-DROPOFF = "tpep_dropoff_datetime"
-REQUIRED = {PICKUP, DROPOFF, "passenger_count", "trip_distance", "fare_amount",
-            "tip_amount", "total_amount", "PULocationID", "DOLocationID", "payment_type"}
-MONEY = ("fare_amount", "tip_amount", "total_amount", "extra", "mta_tax",
-         "tolls_amount", "improvement_surcharge", "congestion_surcharge",
-         "airport_fee", "cbd_congestion_fee")
-ERRORS = {
-    "invalid_pickup_time": "Pickup time is missing or cannot be parsed.",
-    "invalid_dropoff_time": "Dropoff time is missing or cannot be parsed.",
-    "nonpositive_duration": "Dropoff is not later than pickup.",
-    "pickup_outside_month": "Pickup is outside the requested calendar month.",
-    "invalid_passenger_count": "Passenger count must be finite, positive, integral and fit int32.",
-    "invalid_trip_distance": "Distance must be finite and strictly positive.",
-    "invalid_fare_amount": "Fare must be finite, nonnegative and fit decimal(18,2).",
-    "invalid_total_amount": "Total must be finite, nonnegative and fit decimal(18,2).",
-    "invalid_tip_amount": "A recorded nonnull tip must be finite, nonnegative and fit decimal(18,2).",
-}
-# Fixed reporting order: a row is removed only at its first failed rule.
-RULE_ORDER = tuple(ERRORS)
-
-
-def month_bounds(month):
-    if not re.fullmatch(r"\d{4}-(0[1-9]|1[0-2])", month):
-        raise ValueError("Month must be YYYY-MM")
-    start = datetime.strptime(month, "%Y-%m")
-    end = datetime(start.year + 1, 1, 1) if start.month == 12 else datetime(start.year, start.month + 1, 1)
-    return start.isoformat(), end.isoformat()
-
-
-def finite(column):
-    return column.isNotNull() & ~F.isnan(column) & (F.abs(column) != F.lit(float("inf")))
-
-
-def flag_array(conditions):
-    return F.filter(F.array(*[F.when(condition, F.lit(code)) for code, condition in conditions.items()]),
-                    lambda item: item.isNotNull())
-
-
-def mark_rows(raw, month, zone_ids):
-    """Preserve original columns; add normalized values and explicit error/warning arrays."""
-    missing = sorted(REQUIRED - set(raw.columns))
-    if missing:
-        raise ValueError("Missing source columns: " + ", ".join(missing))
-    reserved = {"_n", "rejection_reasons", "warning_flags", "source_file",
-                "pickup_date", "pickup_hour", "is_weekend", "trip_duration_min", "trip_duration_minutes"}
-    if reserved & set(raw.columns):
-        raise ValueError("Input already contains Phase 2 columns")
-    start, end = month_bounds(month)
-    expressions = [F.col(PICKUP).try_cast("timestamp_ntz").alias("pickup"),
-                   F.col(DROPOFF).try_cast("timestamp_ntz").alias("dropoff"),
-                   F.col("passenger_count").try_cast("double").alias("passengers_num"),
-                   F.col("passenger_count").try_cast("double").try_cast("int").alias("passengers"),
-                   F.col("trip_distance").try_cast("double").alias("distance")]
-    for name in MONEY:
-        if name in raw.columns:
-            expressions += [F.col(name).try_cast("double").alias(name + "_num"),
-                            F.col(name).try_cast("decimal(18,2)").alias(name)]
-    for name in ("PULocationID", "DOLocationID", "payment_type"):
-        number = F.col(name).try_cast("double")
-        integer = number.try_cast("int")
-        safe_integer = F.when(finite(number) & (number == integer.cast("double")), integer).otherwise(F.lit(None).cast("int"))
-        expressions += [number.alias(name + "_num"), safe_integer.alias(name)]
-    frame = raw.withColumn("source_file", F.input_file_name()).withColumn("_n", F.struct(*expressions))
-    n = lambda name: F.col("_n." + name)
-    errors = {
-        "invalid_pickup_time": n("pickup").isNull(),
-        "invalid_dropoff_time": n("dropoff").isNull(),
-        "nonpositive_duration": n("pickup").isNotNull() & n("dropoff").isNotNull() & (n("dropoff") <= n("pickup")),
-        "pickup_outside_month": n("pickup").isNotNull() & ((n("pickup") < F.lit(start).cast("timestamp_ntz")) |
-                                                                     (n("pickup") >= F.lit(end).cast("timestamp_ntz"))),
-        "invalid_passenger_count": ~(finite(n("passengers_num")) & (n("passengers_num") > 0) &
-                                      n("passengers").isNotNull() &
-                                      (n("passengers_num") == n("passengers").cast("double"))),
-        "invalid_trip_distance": ~(finite(n("distance")) & (n("distance") > 0)),
-    }
-    for name in ("fare_amount", "total_amount"):
-        errors["invalid_" + name] = ~(finite(n(name + "_num")) & (n(name + "_num") >= 0) & n(name).isNotNull())
-    errors["invalid_tip_amount"] = F.col("tip_amount").isNotNull() & ~(
-        finite(n("tip_amount_num")) & (n("tip_amount_num") >= 0) & n("tip_amount").isNotNull())
-    # Explicit coalesce prevents SQL NULL from silently escaping a rejection rule.
-    errors = {code: F.coalesce(condition, F.lit(True)) for code, condition in errors.items()}
-    warnings = {"missing_tip_amount": F.col("tip_amount").isNull()}
-    for name, label in (("PULocationID", "pickup"), ("DOLocationID", "dropoff")):
-        valid_id = (finite(n(name + "_num")) & n(name).isNotNull() &
-                    (n(name + "_num") == n(name).cast("double")) & n(name).isin(sorted(zone_ids)))
-        warnings["unknown_" + label + "_zone"] = ~F.coalesce(valid_id, F.lit(False)) | n(name).isin(264, 265)
-    valid_payment = (finite(n("payment_type_num")) & n("payment_type").isNotNull() &
-                     (n("payment_type_num") == n("payment_type").cast("double")) & n("payment_type").isin(list(range(7))))
-    warnings["unknown_payment_type"] = ~F.coalesce(valid_payment, F.lit(False))
-    for name in MONEY:
-        if name in raw.columns and name not in ("fare_amount", "total_amount", "tip_amount"):
-            warnings["invalid_" + name] = F.col(name).isNotNull() & ~(
-                finite(n(name + "_num")) & n(name).isNotNull())
-    frame = frame.withColumn("rejection_reasons", flag_array(errors)).withColumn("warning_flags", flag_array(warnings))
-    return frame, list(warnings)
-
-
-def clean_projection(marked, source_columns):
-    replacements = {PICKUP: "pickup", DROPOFF: "dropoff", "passenger_count": "passengers",
-                    "trip_distance": "distance", "PULocationID": "PULocationID",
-                    "DOLocationID": "DOLocationID", "payment_type": "payment_type"}
-    replacements.update({name: name for name in MONEY if name in source_columns})
-    fields = [(F.col("_n." + replacements[name]).alias(name) if name in replacements else F.col(name))
-              for name in source_columns]
-    clean = marked.filter(F.size("rejection_reasons") == 0).select(*fields, "source_file", "warning_flags")
-    return (clean.withColumn("pickup_date", F.to_date(PICKUP))
-            .withColumn("pickup_hour", F.hour(PICKUP))
-            .withColumn("is_weekend", F.dayofweek(PICKUP).isin(1, 7))
-            .withColumn("trip_duration_min", F.timestamp_diff("MICROSECOND", F.col(PICKUP), F.col(DROPOFF)) / F.lit(60_000_000.0)))
-
-
-def sum_flag(condition, alias):
-    return F.coalesce(F.sum(F.when(condition, 1).otherwise(0)), F.lit(0)).cast("long").alias(alias)
-
-
-def profile_rows(marked, source_columns, warning_codes):
-    eligible = F.size("rejection_reasons") == 0
-    expressions = [F.count(F.lit(1)).alias("input_rows"), sum_flag(eligible, "cleaned_rows"),
-                   sum_flag(~eligible, "rejected_rows")]
-    expressions += [sum_flag(F.array_contains("rejection_reasons", code), "error__" + code) for code in ERRORS]
-    surviving = F.lit(True)
-    for code in RULE_ORDER:
-        failed = F.array_contains("rejection_reasons", code)
-        expressions.append(sum_flag(surviving & failed, "removed__" + code))
-        surviving = surviving & ~failed
-    expressions += [sum_flag(F.array_contains("warning_flags", code), "warning__" + code) for code in warning_codes]
-    expressions += [sum_flag(F.col(name).isNull(), "null__" + name) for name in source_columns]
-    numeric_names = [name for name in MONEY if name in source_columns]
-    for name in numeric_names:
-        bad = F.col(name).isNotNull() & (~finite(F.col("_n." + name + "_num")) | F.col("_n." + name).isNull())
-        expressions.append(sum_flag(bad, "numeric__" + name))
-    values = marked.agg(*expressions).first().asDict()
-    rows = values["input_rows"]
-    remaining = rows
-    steps = []
-    for index, code in enumerate(RULE_ORDER, start=1):
-        removed = values["removed__" + code]
-        steps.append({"step": index, "rule": code, "input_rows": remaining,
-                      "removed_rows": removed, "output_rows": remaining - removed})
-        if removed < 0 or removed > remaining:
-            raise ValueError("Invalid sequential rule counts")
-        remaining -= removed
-    if remaining != values["cleaned_rows"] or sum(step["removed_rows"] for step in steps) != values["rejected_rows"]:
-        raise ValueError("Sequential rule counts do not reconcile with final outputs")
-    return {
-        "input_rows": rows, "cleaned_rows": values["cleaned_rows"], "rejected_rows": values["rejected_rows"],
-        "rejected_fraction": values["rejected_rows"] / rows if rows else None,
-        "rejection_counts": {code: values["error__" + code] for code in ERRORS},
-        "sequential_rule_counts": steps,
-        "warning_counts": {code: values["warning__" + code] for code in warning_codes},
-        "source_null_counts": {name: values["null__" + name] for name in source_columns},
-        "invalid_money_parse_or_range_counts": {name: values["numeric__" + name] for name in numeric_names},
-        "counting_note": "rejection_counts overlap across all input rows; sequential_rule_counts remove each row only at its first failed rule in RULE_ORDER, so removed_rows sum to rejected_rows.",
-    }
+from cleaning_policy_v2 import (ERRORS, POLICY_VERSION, REPORT_VERSION, RULE_ORDER,
+                                PICKUP, DROPOFF, mark_rows, clean_projection, profile_rows,
+                                month_bounds, early_cleaned_source)
 
 
 def load_zones(spark, path):
@@ -216,6 +64,8 @@ def main():
     parser.add_argument("--report-dir", required=True)
     args = parser.parse_args()
     month_bounds(args.month)
+    if not args.month.startswith("2023-"):
+        parser.error("Guide v2 requires pickup year 2023; select a 2023 batch month")
     if not re.fullmatch(r"[A-Za-z0-9_-]{1,100}", args.run_id):
         parser.error("Unsafe run ID")
     input_path = args.input_path or f"hdfs://namenode:8020/user/tlc/raw/yellow_tripdata_{args.month}.parquet"
@@ -237,16 +87,22 @@ def main():
               "month": args.month, "started_at_utc": datetime.now(timezone.utc).isoformat(),
               "input_path": input_path, "zones_path": args.zones_path, "outputs": outputs,
               "policy": ERRORS,
-              "policy_notes": ["Zero fare/total are allowed; distance and passenger count must be positive.",
-                               "Missing tips are retained as null with a warning, never replaced by zero.",
-                               "Unknown zones/payment types are warnings, not row rejection rules.",
-                               "Negative recorded fare/total/tip are excluded by policy, not declared fraudulent.",
+              "policy_notes": ["Guide v2 pages 3-5: duration (0,360] minutes, distance (0,100] miles, speed <=80 mph, fare >0, pickup year 2023.",
+                               "Month identifies the input-file batch and output folder, not a pickup-month filter. All eligible pickups in 2023 remain; dropoff may cross a month boundary.",
+                               "Passenger zero or >6 becomes null; missing passengers stay null. No row is rejected for passenger count.",
+                               "Negative, fractional, nonfinite or unparseable passenger values also become null defensively, without row removal.",
+                               "RatecodeID is int; 99 is retained. Invalid casts become null with a repair flag.",
+                               "Either null/unparseable/noninteger LocationID rejects the row; nonnull unknown zones including 264/265 are warnings.",
+                               "Total/tip sign is not a hard filter in v2. Negative values remain with warnings; invalid optional money becomes null.",
                                "Money uses decimal(18,2); optional money parse failures become null with a warning.",
+                               "Fare must remain positive after cent rounding, so tiny positive values rounding to zero are excluded.",
                                "TimestampNTZ source wall-clock values are preserved; duration is a naive time difference.",
                                "Identical rows are retained; the source has no guaranteed unique trip key."]}
-    spark = SparkSession.builder.appName("TLC-Phase2-" + args.run_id).config("spark.sql.session.timeZone", "UTC").getOrCreate()
+    spark = (SparkSession.builder.appName("TLC-Phase2-" + args.run_id).config("spark.sql.session.timeZone", "UTC")
+             .config("spark.sql.debug.maxToStringFields", "200").getOrCreate())
     spark.sparkContext.setLogLevel("WARN")
     marked = None
+    clean = None
     try:
         if spark.sparkContext.master != "spark://spark-master:7077":
             raise ValueError("The real job must run on the standalone Spark cluster")
@@ -273,12 +129,32 @@ def main():
         if quality["input_rows"] != quality["cleaned_rows"] + quality["rejected_rows"]:
             raise ValueError("Input row conservation failed")
         print("PROFILE " + json.dumps(quality), flush=True)
-        clean = clean_projection(marked, source_columns)
-        rejected = marked.filter(F.size("rejection_reasons") > 0).select(*source_columns, "source_file", "rejection_reasons", "warning_flags")
+        # This branch reads raw Parquet with one combined early filter. The audit
+        # branch above scans all rows so before/after statistics remain complete.
+        early = early_cleaned_source(raw, args.month)
+        clean_marked, _ = mark_rows(early, args.month, zones)
+        clean = clean_projection(clean_marked, source_columns, already_eligible=True)
+        rejected = marked.filter(F.size("rejection_reasons") > 0).select(*source_columns, "source_file", "rejection_reasons", "warning_flags", "transformation_flags")
+        plan_buffer = io.StringIO()
+        with redirect_stdout(plan_buffer):
+            clean.explain(mode="formatted")
+        plan = plan_buffer.getvalue()
+        (report_dir / "cleaned-explain.txt").write_text(plan, encoding="utf-8")
+        report["optimization"] = {
+            "cleaned_branch_filter_before_repairs_and_cache": True,
+            "audit_branch_scans_all_rows_for_complete_counts": True,
+            "uses_python_udf": False,
+            "safe_speed_division": "pyspark.sql.functions.try_divide",
+            "explain_file": "cleaned-explain.txt",
+            "pushed_filter_lines": [line.strip() for line in plan.splitlines() if "PushedFilters" in line],
+            "note": "Only supported predicates push into the Parquet reader. HDFS itself does not evaluate row filters. Audit and early-cleaned branches may scan input separately.",
+        }
+        clean.persist(StorageLevel.DISK_ONLY)
         report["cleaned_schema"] = json.loads(clean.schema.json())
         report["samples"] = {
             "cleaned": [json.loads(row) for row in clean.limit(5).toJSON().collect()],
             "rejected": [json.loads(row) for row in rejected.limit(5).toJSON().collect()],
+            "cleaned_with_repairs": [json.loads(row) for row in clean.filter(F.size("transformation_flags") > 0).limit(5).toJSON().collect()],
         }
         step = time.perf_counter()
         clean.coalesce(2).write.mode("errorifexists").parquet(outputs["cleaned"])
@@ -295,11 +171,25 @@ def main():
         checked, _ = mark_rows(clean_back.select(*source_columns), args.month, zones)
         invalid_clean = checked.filter(F.size("rejection_reasons") > 0).limit(1).count()
         bad_rejected = rejected_back.filter(F.size("rejection_reasons") == 0).limit(1).count()
+        duration = F.timestamp_diff("MICROSECOND", F.col(PICKUP), F.col(DROPOFF)) / 60_000_000.0
+        bad_features = clean_back.filter(
+            ~F.col("pickup_date").eqNullSafe(F.to_date(PICKUP)) |
+            ~F.col("pickup_hour").eqNullSafe(F.hour(PICKUP)) |
+            ~F.col("pickup_month").eqNullSafe(F.month(PICKUP)) |
+            ~F.col("is_weekend").eqNullSafe(F.dayofweek(PICKUP).isin(1, 7)) |
+            ~F.col("trip_duration_min").eqNullSafe(duration) |
+            (F.col("passenger_count").isNotNull() & ~F.col("passenger_count").between(1, 6))
+        ).limit(1).count()
+        null_passengers = clean_back.filter(F.col("passenger_count").isNull()).count()
         if (clean_rows != quality["cleaned_rows"] or rejected_rows != quality["rejected_rows"] or
-                invalid_clean or bad_rejected or clean_back.schema.simpleString() != clean.schema.simpleString()):
+                invalid_clean or bad_rejected or bad_features or null_passengers != quality["cleaned_null_passenger_count"] or
+                clean_back.schema.simpleString() != clean.schema.simpleString()):
             raise ValueError("Written output validation failed")
         report["validation"] = {"input_equals_cleaned_plus_rejected": True, "written_row_counts_match": True,
                                 "sequential_rule_counts_reconcile": True,
+                                "derived_features_match_source": True,
+                                "passenger_soft_repairs_preserved": True,
+                                "cleaned_null_passenger_count": null_passengers,
                                 "cleaned_rows_pass_rules": True, "rejected_rows_have_reasons": True,
                                 "written_schema_matches": True,
                                 "cleaned_rows_read_back": clean_rows, "rejected_rows_read_back": rejected_rows}
@@ -318,6 +208,8 @@ def main():
         (report_dir / "failure.json").write_text(json.dumps(json_safe(report), indent=2, default=str) + "\n", encoding="utf-8")
         raise
     finally:
+        if clean is not None:
+            clean.unpersist()
         if marked is not None:
             marked.unpersist()
         spark.stop()

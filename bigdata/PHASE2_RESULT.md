@@ -1,141 +1,132 @@
-# Phase 2 — Làm sạch dữ liệu TLC
+# Phase 2 — Làm sạch theo hướng dẫn BIG Data v2
 
-Đã chạy và kiểm chứng ngày **03/11/2026**, cập nhật và chạy lại ngày **04/11/2026** trên Spark 4.1.4, Hadoop HDFS của Phase 1. Bản cập nhật có đúng cột `trip_duration_min` và bảng số dòng trước/sau từng quy tắc. Các lượt chạy dữ liệu thật thành công, có executor thực thi trên `spark-worker`.
+**ĐẠT, kiểm chứng ngày 08/11/2026.** Căn cứ tài liệu `Hướng-dẫn-đồ-án-BIG-data-v2.pdf`, trang 3–5. Chính sách `tlc-cleaning-v2`, định dạng báo cáo phiên bản 3. Bản này thay phần hướng dẫn Phase 2 trước đây; các báo cáo v1 được giữ làm lịch sử.
 
-## 1. Kết quả thực tế
+## 1. Kết quả dữ liệu thật
 
-| Dữ liệu | Số dòng |
+| Chỉ tiêu | Kết quả |
 |---|---:|
-| Đầu vào Yellow Taxi tháng 01/2023 | 3.066.766 |
-| Đủ điều kiện đưa sang phân tích | 2.884.463 |
-| Tách sang tập rejected | 182.303 (5,94%) |
-| Bảng tra vùng taxi | 265 |
+| Dòng đầu vào | 3.066.766 |
+| Dòng sạch | 2.993.943 |
+| Dòng rejected | 72.823 (2,37%) |
+| Dòng sạch có sửa giá trị thành null | 49.797 |
+| Dòng sạch có passenger_count null, kể cả null sẵn | 113.936 |
+| Số cột sạch | 27: 19 cột nguồn + 3 cột truy vết + 5 cột đặc trưng |
+| Bảng tra vùng | 265 dòng |
 
-`3.066.766 = 2.884.463 + 182.303`. Không xóa hay sửa file gốc. Hash SHA-256 của file gốc trong HDFS được kiểm chứng ngày 03/11 là `32df6f67578fa86c484a6b5ef23a5281992ff085521082340b0f9e5889e9a572`; hash input cục bộ của lượt cập nhật ngày 04/11 vẫn khớp.
+`3.066.766 = 2.993.943 + 72.823`. Số dòng sửa giá trị nằm trong các tập trên, không cộng thêm vào phương trình. Không dùng số liệu 2.884.463 dòng sạch của chính sách v1 cho bản v2.
 
-## 2. Cách vận hành và vai trò của code
+## 2. Đối chiếu quy tắc v2
+
+| Yêu cầu | Cách triển khai |
+|---|---|
+| Giờ trả sau giờ đón, thời lượng tối đa 6 giờ | Thời lượng tính theo microsecond, giữ khoảng `(0,360]` phút. |
+| Năm đón 2023 | Giữ pickup trong năm 2023; không lọc thêm theo tháng của tên file. |
+| Quãng đường `(0,100]` dặm | Loại thiếu, không hữu hạn, không dương hoặc >100. |
+| Tốc độ ≤80 mph | `distance / (duration_minutes / 60)`, dùng `try_divide` an toàn khi mẫu số 0/null. |
+| fare_amount >0 | Kiểm tra hữu hạn, dương và vẫn dương sau chuẩn hóa tiền đến cent. |
+| passenger_count bằng 0 hoặc >6 | Đưa giá trị về null, giữ dòng nếu các quy tắc loại dòng đều đạt. Null sẵn giữ nguyên. |
+| RatecodeID integer, giữ 99 | Cast an toàn thành int; mã 99 không bị loại riêng. |
+| Không thiếu khóa vùng đón/trả | Loại nếu một trong hai khóa sau chuẩn hóa là null. Mã không nguyên/không parse được cũng thành null và bị loại để tránh JOIN nhầm. |
+| Đặc trưng mới | `trip_duration_min`, `pickup_date`, `pickup_hour`, `pickup_month`, `is_weekend`. |
+| Built-in functions | Dùng Spark SQL functions, không Python UDF. |
+| Lọc sớm và pushdown | Nhánh tạo tập sạch có một điều kiện lọc tổng hợp trực tiếp trên Parquet gốc, trước sửa giá trị/cache; có execution plan thực tế. |
+| Đầu ra Parquet | Có bản trên HDFS và bản xuất về `data/cleaned/`. |
+
+Các quyết định phòng vệ được ghi rõ: hành khách âm/lẻ/NaN/Infinity/không parse được cũng chuyển null thay vì xóa chuyến; RatecodeID không cast được chuyển null có cờ; mã vùng không xác định nhưng khác null (kể cả 264/265) giữ kèm cảnh báo. Tổng tiền và tip âm không phải điều kiện loại của v2, nên giữ kèm cảnh báo. Tiền tùy chọn lỗi chuyển null, không tự điền 0.
+
+Tiền dùng `decimal(18,2)`, làm tròn cent; fare dương quá nhỏ nhưng làm tròn thành 0 không đạt điều kiện cuối. Thời gian giữ `timestamp_ntz` theo giờ nguồn, không tự đổi UTC; thời lượng là chênh lệch giờ nguồn, chưa hiệu chỉnh DST. Không tự xóa dòng trùng vì không có khóa chuyến đi bảo đảm duy nhất.
+
+Đây là quy tắc chọn dữ liệu cho phân tích theo tài liệu, không phải kết luận mọi dòng bị loại đều gian lận. Tham số tháng và thư mục `year/month` chỉ nhận diện lô file đầu vào; `pickup_month` phản ánh tháng thực của từng chuyến và dùng khi GROUP BY.
+
+## 3. Bảng số dòng trước/sau từng bước
+
+| Quy tắc | Trước bước | Loại tại bước | Sau bước |
+|---|---:|---:|---:|
+| 1. `invalid_pickup_time` | 3.066.766 | 0 | 3.066.766 |
+| 2. `invalid_dropoff_time` | 3.066.766 | 0 | 3.066.766 |
+| 3. `nonpositive_duration` | 3.066.766 | 1.121 | 3.065.645 |
+| 4. `duration_exceeds_6_hours` | 3.065.645 | 2.837 | 3.062.808 |
+| 5. `pickup_outside_year_2023` | 3.062.808 | 36 | 3.062.772 |
+| 6. `invalid_trip_distance` | 3.062.772 | 44.769 | 3.018.003 |
+| 7. `distance_exceeds_100_miles` | 3.018.003 | 88 | 3.017.915 |
+| 8. `speed_exceeds_80_mph` | 3.017.915 | 1.546 | 3.016.369 |
+| 9. `invalid_fare_amount` | 3.016.369 | 22.426 | 2.993.943 |
+| 10. `invalid_pickup_location` | 2.993.943 | 0 | 2.993.943 |
+| 11. `invalid_dropoff_location` | 2.993.943 | 0 | 2.993.943 |
+
+Tổng cột loại tại bước là **72.823**. Mỗi dòng chỉ được tính loại ở bước đầu không đạt; tập rejected vẫn lưu đầy đủ mọi lý do. `quality.rejection_counts` là số vi phạm độc lập trên toàn đầu vào, có chồng lặp và không được cộng như bảng tuần tự này.
+
+## 4. Giá trị được sửa, không xóa dòng
+
+| Phép sửa | Dòng nguồn có giá trị này | Dòng sạch được giữ và sửa | Dòng bị loại vì quy tắc khác |
+|---|---:|---:|---:|
+| `passenger_zero_to_null` | 51.164 | 49.785 | 1.379 |
+| `passenger_above_6_to_null` | 20 | 12 | 8 |
+
+Trong tập sạch có **49.797 dòng được sửa số hành khách thành null**, gồm 49.785 dòng ban đầu bằng 0 và 12 dòng >6. Cộng thêm 64.139 dòng có số hành khách null sẵn được giữ, tập sạch có **113.936 passenger_count null**. Các nhóm sửa có thể chồng lặp nói chung; báo cáo đếm riêng số dòng duy nhất có sửa. Cast kiểu thông thường và làm tròn tiền không nằm trong thống kê sửa giá trị này.
+
+Phase 3 đếm chuyến bằng `COUNT(*)`; `COUNT(passenger_count)` chỉ đếm giá trị khác null và sẽ làm thiếu chuyến. Không dùng `dropna()` trên toàn bộ DataFrame để vô tình xóa lại các dòng đã giữ.
+
+## 5. Cách code hoạt động
 
 ```text
-HDFS raw Parquet + CSV tra vùng
-          ↓ Spark đọc bằng DataFrame
-Kiểm tra từng dòng và gắn lý do/cảnh báo
-          ├── Không có lý do loại → chuẩn hóa → cleaned Parquet
-          └── Có lý do loại → giữ giá trị gốc + lý do → rejected Parquet
-          ↓
-Đọc lại đầu ra, kiểm tra số dòng/schema/quy tắc → báo cáo JSON + log
+HDFS Parquet gốc + CSV mã vùng
+  ├─ Nhánh audit: gắn toàn bộ lý do/cờ → thống kê → rejected giữ giá trị nguồn
+  └─ Nhánh sạch: một filter tổng hợp ngay trên nguồn → chuẩn hóa/sửa null → 5 đặc trưng
+      ↓
+Ghi Parquet sạch/rejected vào HDFS → đọc lại và kiểm chứng → báo cáo JSON
+      ↓
+Runner xuất Parquet sạch về data/cleaned, ghi CSV và manifest SHA-256
 ```
 
-- [scripts/run_phase2.ps1](scripts/run_phase2.ps1): kiểm tra cụm, ghi hash source/input, chép source vào Spark, chạy kiểm thử nhỏ, đưa bảng tra vùng vào HDFS, gọi `spark-submit` và xuất báo cáo về máy.
-- [src/clean_data.py](src/clean_data.py): xử lý dữ liệu thật. `mark_rows()` đánh dấu lỗi/cảnh báo; `profile_rows()` đếm; `clean_projection()` chuẩn hóa tập hợp lệ; `main()` ghi và kiểm tra lại đầu ra.
-- [src/test_cleaning_rules.py](src/test_cleaning_rules.py): 25 dòng giả lập với kết quả dự kiến, dùng để kiểm tra quy tắc, không trộn vào dữ liệu TLC.
+- [src/cleaning_policy_v2.py](src/cleaning_policy_v2.py): điều kiện loại, sửa giá trị, đặc trưng, thống kê tuần tự và chuyển đổi.
+- [src/clean_data.py](src/clean_data.py): job Spark Standalone, lưu execution plan, ghi HDFS, đọc lại kiểm chứng và tạo báo cáo.
+- [src/test_cleaning_v2.py](src/test_cleaning_v2.py): 8 kiểm thử, 47 dòng có kết quả tính tay: 24 sạch, 23 rejected.
+- [src/test_cleaning_rules.py](src/test_cleaning_rules.py): điểm chạy bộ kiểm thử.
+- [scripts/run_phase2.ps1](scripts/run_phase2.ps1): chuẩn bị, chạy, xuất CSV và dữ liệu sạch về máy, kiểm tra header/footer Parquet và ghi hash.
 
-Spark Master điều phối, Spark Worker thực thi, HDFS lưu dữ liệu. Python điều khiển các phép toán Spark SQL; không tải toàn bộ dữ liệu về Python/Pandas. Chỉ thu thống kê tổng hợp, bảng mã vùng nhỏ và tối đa 5 dòng mẫu mỗi tập về driver. Dữ liệu trung gian cache bằng `DISK_ONLY` để giảm áp lực RAM. Job dùng tối đa 2 lõi executor, executor 1 GiB và driver 768 MiB; đây là cấu hình job, chưa tính tài nguyên các dịch vụ Hadoop/Spark.
+Audit cần thấy toàn bộ dòng để đếm trước/sau; nhánh này đọc tất cả dữ liệu và cache trên đĩa. Nhánh sạch đọc nguồn riêng với filter sớm, nên tổng job có thể quét dữ liệu nhiều lần. Chỉ các điều kiện được Parquet hỗ trợ mới push xuống bộ đọc; không phải HDFS tự lọc SQL. Execution plan đã ghi `PushedFilters` thật, gồm giới hạn năm, khoảng cách, fare và điều kiện không null. Không khẳng định mọi điều kiện đều pushdown hay không có áp lực RAM. Thống kê tổng hợp, bảng vùng nhỏ và tối đa 5 dòng mỗi nhóm mẫu được collect; toàn bộ TLC không đưa về Python/Pandas.
 
-## 3. Quy tắc đã áp dụng
+## 6. Minh chứng và số đo
 
-| Lý do loại | Số dòng có lý do này |
-|---|---:|
-| Thiếu/không đọc được giờ đón | 0 |
-| Thiếu/không đọc được giờ trả | 0 |
-| Giờ trả không sau giờ đón | 1.121 |
-| Giờ đón ngoài tháng 01/2023 | 48 |
-| Số hành khách thiếu/không hợp lệ | 122.907 |
-| Quãng đường không hợp lệ hoặc ≤ 0 | 45.862 |
-| Giá cước thiếu/không hợp lệ/âm | 25.049 |
-| Tổng tiền thiếu/không hợp lệ/âm | 25.204 |
-| Tiền tip có ghi nhận nhưng không hợp lệ/âm | 225 |
+- Run: `p2v2-202301-20261108T122833705Z-9fc6e4`; ứng dụng `app-20261108123030-0001` thực thi trên `spark-worker`.
+- [Báo cáo JSON](reports/phase2/p2v2-202301-20261108T122833705Z-9fc6e4/quality_report.json), [trạng thái runner](reports/phase2/p2v2-202301-20261108T122833705Z-9fc6e4/runner-status.json).
+- [CSV loại dòng](reports/phase2/p2v2-202301-20261108T122833705Z-9fc6e4/rule-counts.csv), [CSV sửa giá trị](reports/phase2/p2v2-202301-20261108T122833705Z-9fc6e4/transformation-counts.csv).
+- [Execution plan](reports/phase2/p2v2-202301-20261108T122833705Z-9fc6e4/cleaned-explain.txt), [log Spark](reports/phase2/p2v2-202301-20261108T122833705Z-9fc6e4/spark-cleaning.log), [log 8 kiểm thử](reports/phase2/p2v2-202301-20261108T122833705Z-9fc6e4/synthetic-tests.log).
+- [Hash source/input](reports/phase2/p2v2-202301-20261108T122833705Z-9fc6e4/source-input-hashes.json), [manifest Parquet xuất về máy](reports/phase2/p2v2-202301-20261108T122833705Z-9fc6e4/local-output-manifest.json).
+- [Đối chiếu hợp đồng v2](reports/phase2/p2v2-202301-20261108T122833705Z-9fc6e4/contract-verification.json).
 
-Một dòng có thể vi phạm nhiều quy tắc, nên **không cộng bảng này để tính số dòng bị loại**. Trong dữ liệu gốc, `passenger_count` có 71.743 giá trị null; đây là một phần trong 122.907 dòng không đạt quy tắc hành khách.
+Tổng thời gian job đến báo cáo **240,493 giây**; profile/cache 62,118, ghi sạch 11,101, ghi rejected 3,614, đọc lại/kiểm chứng 25,381 giây. Tổng còn có khởi tạo, đọc metadata/bảng vùng, lập plan, lấy mẫu và các phần điều phối, nên không bằng tổng 4 số thành phần. Không tính kiểm thử giả lập, upload CSV, xuất file về Windows và dừng Spark. Đây chưa phải benchmark Spark/Pandas hay phép so tốc độ với v1 vì chính sách khác nhau.
 
-Từ báo cáo phiên bản 2, `quality.sequential_rule_counts` bổ sung bảng **trước bước → bị loại tại bước → sau bước** theo thứ tự cố định: giờ đón, giờ trả, thời lượng, tháng, hành khách, quãng đường, giá cước, tổng tiền, tip. Một dòng chỉ đóng góp vào số bị loại ở quy tắc đầu tiên không đạt; tập rejected vẫn giữ đầy đủ mọi lý do. Vì vậy bảng tuần tự có thể cộng số bị loại, còn bảng vi phạm độc lập phía trên thì không. Mỗi lượt chạy xuất thêm `rule-counts.csv` để mở bằng Excel hoặc gửi nhóm trưởng.
+Đã kiểm tra bảo toàn số dòng, bảng tuần tự, count/schema sau ghi, điều kiện v2 trên dữ liệu đọc lại, 5 đặc trưng và số hành khách null được giữ. Bản xuất có `_SUCCESS`, 1 file Parquet hợp lệ, kích thước/hash được ghi trong manifest. File gốc HDFS vẫn có SHA-256 `32df6f67578fa86c484a6b5ef23a5281992ff085521082340b0f9e5889e9a572`, đã kiểm tra ngày 08/11.
 
-Thống kê tuần tự từ lượt chạy cập nhật ngày 04/11/2026:
+## 7. Chạy lại và bàn giao
 
-| Bước kiểm tra | Trước bước | Bị loại tại bước | Sau bước |
-|---|---:|---:|---:|
-| Giờ đón hợp lệ | 3.066.766 | 0 | 3.066.766 |
-| Giờ trả hợp lệ | 3.066.766 | 0 | 3.066.766 |
-| Thời lượng > 0 | 3.066.766 | 1.121 | 3.065.645 |
-| Giờ đón trong tháng | 3.065.645 | 48 | 3.065.597 |
-| Số hành khách hợp lệ | 3.065.597 | 122.792 | 2.942.805 |
-| Quãng đường hợp lệ | 2.942.805 | 36.240 | 2.906.565 |
-| Giá cước hợp lệ | 2.906.565 | 21.989 | 2.884.576 |
-| Tổng tiền hợp lệ | 2.884.576 | 113 | 2.884.463 |
-| Tip hợp lệ nếu có ghi nhận | 2.884.463 | 0 | 2.884.463 |
-
-Tổng cột **bị loại tại bước = 182.303**. Bước tip không loại thêm dòng nào vì các dòng tip không hợp lệ đã bị loại ở bước trước; điều này không có nghĩa đầu vào không có lỗi tip.
-
-Đây là **chính sách chọn dữ liệu cho phân tích**, không phải kết luận mọi dòng rejected đều sai. Tiền âm có thể liên quan điều chỉnh giao dịch; dòng thiếu số hành khách vẫn có thể hữu ích cho mục tiêu khác. Khi báo cáo phân tích cần nêu rõ phạm vi đã lọc và khả năng ảnh hưởng kết quả.
-
-Các điểm cần nhớ:
-
-- Hành khách phải là số nguyên dương trong phạm vi int32; khoảng cách phải hữu hạn và > 0. Không tự đặt trần khoảng cách/thời lượng.
-- Giá cước/tổng tiền bằng 0 được giữ. Tip thiếu giữ null và gắn cảnh báo, không tự thay bằng 0.
-- Mã vùng không xác định hoặc mã thanh toán lạ chỉ gắn cảnh báo. Mã vùng 264/265 cũng được đánh dấu không xác định. Số cảnh báo vùng đón/trả trên **toàn bộ đầu vào** là 41.763 / 33.549; có thể chồng lặp hoặc nằm trong tập rejected.
-- Khoản phụ thu không chuẩn hóa được chuyển thành null kèm cảnh báo; phụ thu âm không tự động làm loại dòng.
-- Không xóa dòng giống nhau vì đầu vào không có khóa chuyến đi bảo đảm duy nhất.
-- Tiền chuyển sang `decimal(18,2)`, làm tròn đến cent. Thời gian giữ `timestamp_ntz` theo giờ ghi nhận ban đầu; không tự chuyển UTC.
-- Tập sạch có 25 cột: 19 cột nguồn, `source_file`, `warning_flags` và 4 cột mới: `pickup_date`, `pickup_hour`, `is_weekend`, `trip_duration_min`. Tên cột thời lượng được cập nhật theo yêu cầu bàn giao ngày 04/11/2026; các lượt chạy cũ vẫn giữ schema cũ để đối chiếu.
-
-Ví dụ dòng giữ lại: đón `2023-01-01 00:32:10`, trả `00:40:36`, 1 hành khách, 0,97 mile, giá cước 9,30. Đầu ra thêm ngày `2023-01-01`, giờ `0`, cuối tuần `true`, thời lượng khoảng `8,4333` phút. Dòng có `passenger_count = 0` được chuyển sang rejected với `invalid_passenger_count`; các giá trị nguồn được giữ lại để đối chiếu.
-
-## 4. Minh chứng và số đo
-
-Lượt cập nhật ngày **04/11/2026**: `p2-202301-20261104T053321000Z-69e307`, ứng dụng `app-20261104053438-0000` ở trạng thái `FINISHED`. Tổng thời gian job đến báo cáo **91,287 giây**: profile/cache 36,508 giây, ghi sạch 11,420 giây, ghi rejected 2,956 giây, đọc lại/kiểm tra 11,240 giây; tốc độ tính theo tổng thời gian khoảng 33.595 dòng/giây. Các số đo có cùng phạm vi như mô tả bên dưới.
-
-Đã xác nhận đủ 4 cột yêu cầu, giữ đủ 19 cột nguồn, CSV khớp JSON, số dòng trước/sau từng bước nối tiếp đúng và tổng bị loại khớp đầu ra. Số dòng, số vi phạm độc lập và cảnh báo không đổi so với bản ngày 03/11; chính sách lọc vẫn là `tlc-cleaning-v1`, định dạng báo cáo được nâng lên phiên bản 2. Không ghi đè các lượt chạy cũ.
-
-Hai lượt chạy ban đầu ngày 03/11/2026 (schema thời lượng cũ):
-
-| Lượt | Run ID | Thời gian job đến khi tạo báo cáo |
-|---|---|---:|
-| 1 | `p2-202301-20261103T142137649Z-f107a7` | 122,575 giây |
-| 2 | `p2-202301-20261103T143016815Z-e71064` | 98,091 giây |
-
-Số đo lượt 2: profile/cache 36,080 giây; ghi sạch 11,915 giây; ghi rejected 4,490 giây; đọc lại/kiểm tra 12,797 giây. Tổng thời gian còn có khởi tạo Spark, đọc bảng tra, lấy mẫu và các phần điều phối; không bằng tổng 4 mục này. Tốc độ theo tổng thời gian là khoảng 31.264 dòng đầu vào/giây.
-
-Đây là số đo hai lần chạy trên máy hiện tại, **chưa phải benchmark so sánh công nghệ hoặc mở rộng quy mô**. Tổng không tính thời gian kiểm thử giả lập, upload CSV, chép báo cáo ra Windows và dừng Spark; chênh lệch hai lượt không chứng minh mức tăng tốc ổn định.
-
-Đã kiểm tra:
-
-- Bộ kiểm thử cập nhật ngày 04/11/2026 có 6 kiểm thử trên 25 dòng giả lập đều đạt: dự kiến 7 dòng sạch, 18 dòng rejected; bao gồm null, NaN/Infinity, số âm, số hành khách lẻ, tràn số, ranh giới tháng, tiền làm tròn, dòng giống nhau, lỗi chồng lặp và số dòng trước/sau từng quy tắc. Bản đầu ngày 03/11 có 5 kiểm thử.
-- Đọc lại toàn bộ hai đầu ra, số dòng khớp và bảo toàn đầu vào.
-- Schema tập sạch đúng dự kiến; mọi dòng sạch đạt các điều kiện loại; mọi dòng rejected có lý do.
-- Hai lượt cho cùng thống kê chất lượng, schema, chính sách và kết quả kiểm tra. Không khẳng định các file Parquet giống từng byte hoặc thứ tự dòng cố định.
-- Hai ứng dụng Spark ở trạng thái `FINISHED`; sau chạy vẫn có 1 worker và 1 DataNode hoạt động.
-
-Mở các file sau để đối đáp/demo:
-
-- [Báo cáo lần thành công mới nhất](reports/phase2/latest.json): số dòng, schema, ví dụ input/output, thời gian và đường dẫn HDFS.
-- [Bảng trước/sau từng quy tắc ngày 04/11](reports/phase2/p2-202301-20261104T053321000Z-69e307/rule-counts.csv): có thể mở bằng Excel để đối chiếu.
-- [Kiểm chứng bản cập nhật](reports/phase2/p2-202301-20261104T053321000Z-69e307/contract-verification.json): tên cột, số dòng, CSV, hash source/input và trạng thái Spark.
-- [Log xử lý ngày 04/11](reports/phase2/p2-202301-20261104T053321000Z-69e307/spark-cleaning.log).
-- [Log 6 kiểm thử ngày 04/11](reports/phase2/p2-202301-20261104T053321000Z-69e307/synthetic-tests.log).
-- [Đối chiếu hai lượt chạy ban đầu](reports/phase2/reproducibility.json): các kiểm tra trùng khớp và hash dữ liệu gốc tại thời điểm kiểm chứng ngày 03/11; không đại diện cho hash source sau cập nhật ngày 04/11.
-- [Log xử lý lượt 2](reports/phase2/p2-202301-20261103T143016815Z-e71064/spark-cleaning.log).
-- [Log kiểm thử giả lập](reports/phase2/p2-202301-20261103T142137649Z-f107a7/synthetic-tests.log).
-- [Hash source/input lượt 2](reports/phase2/p2-202301-20261103T143016815Z-e71064/source-input-hashes.json).
-
-## 5. Chạy lại và bàn giao sang phân tích
-
-Mở Docker Desktop, mở PowerShell tại thư mục dự án. Nếu cụm đang dừng, khởi động theo README. Sau đó:
+Mở Docker Desktop, khởi động cụm và upload dữ liệu gốc theo README nếu chưa có. Tại thư mục dự án:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\run_phase2.ps1
 ```
 
-Thành công sẽ in `PHASE 2 PASSED` cùng số dòng, đường dẫn báo cáo và tập sạch. Script dừng khi lỗi và lưu log; mỗi lượt có thư mục riêng, không ghi đè đầu ra cũ. Báo cáo mới nhất ở `reports/phase2/latest.json` chỉ cập nhật sau khi thành công.
+Lệnh phải kết thúc với `PHASE 2 PASSED`. Mỗi lần chạy có run_id riêng. [latest.json](reports/phase2/latest.json) và [latest-export.json](reports/phase2/latest-export.json) chỉ trỏ tới lượt thành công mới nhất.
 
-Đầu vào cho Phase 3 hiện tại lấy từ `outputs.cleaned` của báo cáo:
+HDFS đầu vào Phase 3 của lượt đã kiểm chứng:
 
 ```text
-hdfs://namenode:8020/user/tlc/cleaned/year=2023/month=01/run_id=p2-202301-20261104T053321000Z-69e307
+hdfs://namenode:8020/user/tlc/cleaned/year=2023/month=01/run_id=p2v2-202301-20261108T122833705Z-9fc6e4
 ```
 
-Chỉ đọc **một run cụ thể**. Nếu quét tất cả `run_id`, các lần chạy sẽ bị tính lặp. Tập rejected ở đường dẫn tương ứng dưới `/user/tlc/rejected/`; báo cáo cũng có bản HDFS dưới `/user/tlc/quality/`.
+Bản tương ứng trên máy:
 
-Phase 2 hiện hoàn thành bước làm sạch và tạo dữ liệu cho phân tích. Chưa thực hiện KPI/biểu đồ của bước phân tích, mô hình dự báo hay benchmark nhiều kích thước dữ liệu.
+```text
+data/cleaned/year=2023/month=01/run_id=p2v2-202301-20261108T122833705Z-9fc6e4
+```
 
-## 6. Ghi nhận hỗ trợ AI
+Chỉ dùng một run, không quét gộp các phiên bản lịch sử. Nếu sửa/chạy lại code thì dùng đường dẫn trong báo cáo của lượt mới. Báo cáo v1 và đợt thử v2 có thêm lọc tháng được giữ làm lịch sử, không dùng làm đầu vào bàn giao v2 cuối này. ZIP ngày 05/11 là bản chính sách cũ.
 
-AI (Codex) hỗ trợ đáng kể việc viết code Phase 2, kiểm thử, chạy kiểm chứng và soạn tài liệu. Nhóm cần đọc, rà soát và giải thích được chính sách lọc, luồng xử lý, kết quả trước khi nộp; đưa ghi nhận này vào báo cáo theo yêu cầu học phần.
+Phase 2 hoàn thành phần làm sạch/chuyển đổi. KPI, benchmark Pandas/Spark và pipeline đầy đủ của các giai đoạn sau chưa nằm trong kết quả này.
+
+## 8. Ghi nhận AI
+
+Codex hỗ trợ đáng kể code, kiểm thử, kiểm chứng và tài liệu. Nhóm cần tự đọc, rà soát, hiểu và giải thích được từng quy tắc/cách đo; ghi nhận việc dùng AI trong báo cáo học phần.

@@ -1,0 +1,53 @@
+WARNING: Using incubator modules: jdk.incubator.vector
+Using Spark's default log4j profile: org/apache/spark/log4j2-defaults.properties
+26/11/08 12:30:26 INFO SparkContext: Running Spark version 4.1.4
+26/11/08 12:30:26 INFO SparkContext: OS info Linux, 7.0.14-linuxkit, amd64
+26/11/08 12:30:26 INFO SparkContext: Java version 17.0.20.1+1
+26/11/08 12:30:26 WARN NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+26/11/08 12:30:26 INFO ResourceUtils: ==============================================================
+26/11/08 12:30:26 INFO ResourceUtils: No custom resources configured for spark.driver.
+26/11/08 12:30:26 INFO ResourceUtils: ==============================================================
+26/11/08 12:30:26 INFO SparkContext: Submitted application: TLC-Phase2-p2v2-202301-20261108T122833705Z-9fc6e4
+26/11/08 12:30:27 INFO SecurityManager: Changing view acls to: spark
+26/11/08 12:30:27 INFO SecurityManager: Changing modify acls to: spark
+26/11/08 12:30:27 INFO SecurityManager: Changing view acls groups to: spark
+26/11/08 12:30:27 INFO SecurityManager: Changing modify acls groups to: spark
+26/11/08 12:30:27 INFO SecurityManager: SecurityManager: authentication disabled; ui acls disabled; users with view permissions: spark groups with view permissions: EMPTY; users with modify permissions: spark; groups with modify permissions: EMPTY; RPC SSL disabled
+26/11/08 12:30:27 INFO Utils: Successfully started service 'sparkDriver' on port 34425.
+26/11/08 12:30:27 INFO SparkEnv: Registering MapOutputTracker
+26/11/08 12:30:27 INFO SparkEnv: Registering BlockManagerMaster
+26/11/08 12:30:27 INFO BlockManagerMasterEndpoint: Using org.apache.spark.storage.DefaultTopologyMapper for getting topology information
+26/11/08 12:30:27 INFO BlockManagerMasterEndpoint: BlockManagerMasterEndpoint up
+26/11/08 12:30:28 INFO SparkEnv: Registering BlockManagerMasterHeartbeat
+26/11/08 12:30:28 INFO DiskBlockManager: Created local directory at /tmp/blockmgr-e00e9c3f-59b3-4f87-bac2-116863579abc
+26/11/08 12:30:28 INFO SparkEnv: Registering OutputCommitCoordinator
+26/11/08 12:30:28 INFO JettyUtils: Start Jetty 0.0.0.0:4040 for SparkUI
+26/11/08 12:30:28 INFO Utils: Successfully started service 'SparkUI' on port 4040.
+26/11/08 12:30:29 INFO ResourceProfile: Default ResourceProfile created, executor resources: Map(memory -> name: memory, amount: 1024, script: , vendor: , offHeap -> name: offHeap, amount: 0, script: , vendor: ), task resources: Map(cpus -> name: cpus, amount: 1.0)
+26/11/08 12:30:29 INFO ResourceProfile: Limiting resource is cpu
+26/11/08 12:30:29 INFO ResourceProfileManager: Added ResourceProfile id: 0
+26/11/08 12:30:29 INFO SecurityManager: Changing view acls to: spark
+26/11/08 12:30:29 INFO SecurityManager: Changing modify acls to: spark
+26/11/08 12:30:29 INFO SecurityManager: Changing view acls groups to: spark
+26/11/08 12:30:29 INFO SecurityManager: Changing modify acls groups to: spark
+26/11/08 12:30:29 INFO SecurityManager: SecurityManager: authentication disabled; ui acls disabled; users with view permissions: spark groups with view permissions: EMPTY; users with modify permissions: spark; groups with modify permissions: EMPTY; RPC SSL disabled
+26/11/08 12:30:29 INFO StandaloneAppClient$ClientEndpoint: Connecting to master spark://spark-master:7077...
+26/11/08 12:30:30 INFO TransportClientFactory: Successfully created connection to spark-master/172.22.0.3:7077 after 100 ms (0 ms spent in bootstraps)
+26/11/08 12:30:30 INFO StandaloneSchedulerBackend: Connected to Spark cluster with app ID app-20261108123030-0001
+26/11/08 12:30:30 INFO StandaloneAppClient$ClientEndpoint: Executor added: app-20261108123030-0001/0 on worker-20261108122134-spark-worker-7078 (spark-worker:7078) with 2 core(s)
+26/11/08 12:30:30 INFO Utils: Successfully started service 'org.apache.spark.network.netty.NettyBlockTransferService' on port 40841.
+26/11/08 12:30:30 INFO NettyBlockTransferService: Server created on spark-master:40841
+26/11/08 12:30:30 INFO StandaloneSchedulerBackend: Granted executor ID app-20261108123030-0001/0 on hostPort spark-worker:7078 with 2 core(s), 1024.0 MiB RAM
+26/11/08 12:30:30 INFO BlockManager: Using org.apache.spark.storage.RandomBlockReplicationPolicy for block replication policy
+26/11/08 12:30:30 INFO StandaloneAppClient$ClientEndpoint: Executor updated: app-20261108123030-0001/0 is now RUNNING
+26/11/08 12:30:30 INFO BlockManagerMaster: Registering BlockManager BlockManagerId(driver, spark-master, 40841, None)
+26/11/08 12:30:30 INFO BlockManagerMasterEndpoint: Registering block manager spark-master:40841 with 265.5 MiB RAM, BlockManagerId(driver, spark-master, 40841, None)
+26/11/08 12:30:30 INFO BlockManagerMaster: Registered BlockManager BlockManagerId(driver, spark-master, 40841, None)
+26/11/08 12:30:31 INFO BlockManager: Initialized BlockManager: BlockManagerId(driver, spark-master, 40841, None)
+26/11/08 12:30:31 INFO StandaloneSchedulerBackend: SchedulerBackend is ready for scheduling beginning after reached minRegisteredResourcesRatio: 0.0
+26/11/08 12:30:33 INFO StandaloneSchedulerBackend$StandaloneDriverEndpoint: Registered executor NettyRpcEndpointRef(spark-client://Executor) (172.22.0.2:56186) with ID 0, ResourceProfileId 0
+26/11/08 12:30:33 INFO BlockManagerMasterEndpoint: Registering block manager spark-worker:34685 with 434.4 MiB RAM, BlockManagerId(0, spark-worker, 34685, None)
+PROFILE {"input_rows": 3066766, "cleaned_rows": 2993943, "rejected_rows": 72823, "rejected_fraction": 0.023745861275363038, "rejection_counts": {"invalid_pickup_time": 0, "invalid_dropoff_time": 0, "nonpositive_duration": 1121, "duration_exceeds_6_hours": 2837, "pickup_outside_year_2023": 38, "invalid_trip_distance": 45862, "distance_exceeds_100_miles": 88, "speed_exceeds_80_mph": 1617, "invalid_fare_amount": 26159, "invalid_pickup_location": 0, "invalid_dropoff_location": 0}, "sequential_rule_counts": [{"step": 1, "rule": "invalid_pickup_time", "input_rows": 3066766, "removed_rows": 0, "output_rows": 3066766}, {"step": 2, "rule": "invalid_dropoff_time", "input_rows": 3066766, "removed_rows": 0, "output_rows": 3066766}, {"step": 3, "rule": "nonpositive_duration", "input_rows": 3066766, "removed_rows": 1121, "output_rows": 3065645}, {"step": 4, "rule": "duration_exceeds_6_hours", "input_rows": 3065645, "removed_rows": 2837, "output_rows": 3062808}, {"step": 5, "rule": "pickup_outside_year_2023", "input_rows": 3062808, "removed_rows": 36, "output_rows": 3062772}, {"step": 6, "rule": "invalid_trip_distance", "input_rows": 3062772, "removed_rows": 44769, "output_rows": 3018003}, {"step": 7, "rule": "distance_exceeds_100_miles", "input_rows": 3018003, "removed_rows": 88, "output_rows": 3017915}, {"step": 8, "rule": "speed_exceeds_80_mph", "input_rows": 3017915, "removed_rows": 1546, "output_rows": 3016369}, {"step": 9, "rule": "invalid_fare_amount", "input_rows": 3016369, "removed_rows": 22426, "output_rows": 2993943}, {"step": 10, "rule": "invalid_pickup_location", "input_rows": 2993943, "removed_rows": 0, "output_rows": 2993943}, {"step": 11, "rule": "invalid_dropoff_location", "input_rows": 2993943, "removed_rows": 0, "output_rows": 2993943}], "transformation_counts": [{"rule": "passenger_zero_to_null", "input_affected_rows": 51164, "cleaned_affected_rows": 49785, "rejected_affected_rows": 1379}, {"rule": "passenger_above_6_to_null", "input_affected_rows": 20, "cleaned_affected_rows": 12, "rejected_affected_rows": 8}, {"rule": "passenger_invalid_to_null", "input_affected_rows": 0, "cleaned_affected_rows": 0, "rejected_affected_rows": 0}, {"rule": "invalid_ratecode_to_null", "input_affected_rows": 0, "cleaned_affected_rows": 0, "rejected_affected_rows": 0}, {"rule": "invalid_tip_amount_to_null", "input_affected_rows": 0, "cleaned_affected_rows": 0, "rejected_affected_rows": 0}, {"rule": "invalid_total_amount_to_null", "input_affected_rows": 0, "cleaned_affected_rows": 0, "rejected_affected_rows": 0}, {"rule": "invalid_extra_to_null", "input_affected_rows": 0, "cleaned_affected_rows": 0, "rejected_affected_rows": 0}, {"rule": "invalid_mta_tax_to_null", "input_affected_rows": 0, "cleaned_affected_rows": 0, "rejected_affected_rows": 0}, {"rule": "invalid_tolls_amount_to_null", "input_affected_rows": 0, "cleaned_affected_rows": 0, "rejected_affected_rows": 0}, {"rule": "invalid_improvement_surcharge_to_null", "input_affected_rows": 0, "cleaned_affected_rows": 0, "rejected_affected_rows": 0}, {"rule": "invalid_congestion_surcharge_to_null", "input_affected_rows": 0, "cleaned_affected_rows": 0, "rejected_affected_rows": 0}, {"rule": "invalid_airport_fee_to_null", "input_affected_rows": 0, "cleaned_affected_rows": 0, "rejected_affected_rows": 0}], "input_rows_with_repairs": 51184, "cleaned_rows_with_repairs": 49797, "cleaned_null_passenger_count": 113936, "warning_counts": {"missing_passenger_count": 71743, "missing_tip_amount": 0, "negative_tip_amount": 225, "negative_total_amount": 25204, "unknown_pickup_zone": 41763, "unknown_dropoff_zone": 33549, "unknown_payment_type": 0, "passenger_zero_to_null": 51164, "passenger_above_6_to_null": 20, "passenger_invalid_to_null": 0, "invalid_ratecode_to_null": 0, "invalid_tip_amount_to_null": 0, "invalid_total_amount_to_null": 0, "invalid_extra_to_null": 0, "invalid_mta_tax_to_null": 0, "invalid_tolls_amount_to_null": 0, "invalid_improvement_surcharge_to_null": 0, "invalid_congestion_surcharge_to_null": 0, "invalid_airport_fee_to_null": 0}, "source_null_counts": {"VendorID": 0, "tpep_pickup_datetime": 0, "tpep_dropoff_datetime": 0, "passenger_count": 71743, "trip_distance": 0, "RatecodeID": 71743, "store_and_fwd_flag": 71743, "PULocationID": 0, "DOLocationID": 0, "payment_type": 0, "fare_amount": 0, "extra": 0, "mta_tax": 0, "tip_amount": 0, "tolls_amount": 0, "improvement_surcharge": 0, "total_amount": 0, "congestion_surcharge": 71743, "airport_fee": 71743}, "counting_note": "Independent rejection_counts overlap. Sequential removed_rows count each rejected row once. Repairs never remove a row and may overlap each other; repair counts exclude ordinary casts/rounding and already-null values."}
+WROTE hdfs://namenode:8020/user/tlc/cleaned/year=2023/month=01/run_id=p2v2-202301-20261108T122833705Z-9fc6e4
+PHASE2 PASSED input=3066766 cleaned=2993943 rejected=72823
+REPORT hdfs://namenode:8020/user/tlc/quality/year=2023/month=01/run_id=p2v2-202301-20261108T122833705Z-9fc6e4/quality_report.json

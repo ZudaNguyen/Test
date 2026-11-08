@@ -1,0 +1,26 @@
+{
+    "status":  "passed",
+    "run_id":  "p2v2-202301-20261108T122833705Z-9fc6e4",
+    "policy_version":  "tlc-cleaning-v2",
+    "checked_at_utc":  "2026-11-08T12:37:02.2057073Z",
+    "checks":  {
+                   "report_and_runner_passed":  true,
+                   "final_guide_v2_policy":  true,
+                   "all_five_features_present":  true,
+                   "source_columns_retained":  true,
+                   "ratecode_and_passengers_integer":  true,
+                   "no_passenger_or_month_rejection":  true,
+                   "all_expected_hard_rules":  true,
+                   "early_filter_and_pushdown_observed":  true,
+                   "sequential_counts_reconcile":  true,
+                   "both_csv_match_report":  true,
+                   "soft_repairs_counts_reconcile":  true,
+                   "persisted_output_checks_passed":  true,
+                   "source_and_input_hashes_match":  true,
+                   "local_export_hashes_match":  true,
+                   "spark_application_finished":  true
+               },
+    "guide_pdf_sha256":  "30d8f18b123ab7da0c19ca26e29d5a9f07ea69eba45d0ae451c7bc0c68835a69",
+    "raw_hdfs_sha256_observed":  "32df6f67578fa86c484a6b5ef23a5281992ff085521082340b0f9e5889e9a572",
+    "raw_hdfs_hash_note":  "Observed 08/11/2026 using hdfs dfs -cat piped to sha256sum, exit 0; matches the unchanged local raw input."
+}
